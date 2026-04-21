@@ -1,0 +1,1485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPT Monthly DRR Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0B1F3A;--navy2:#132d52;--navy3:#1e3a5f;--teal:#0891B2;--teal2:#06B6D4;--teal-lt:#E0F7FA;--gold:#D97706;--gold-lt:#FEF3C7;--green:#059669;--green-lt:#D1FAE5;--red:#DC2626;--red-lt:#FEE2E2;--purple:#7C3AED;--purple-lt:#EDE9FE;--slate:#334155;--muted:#64748B;--border:#E2E8F0;--bg:#F0F4F8;--card:#FFFFFF}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--slate);font-size:13px;min-height:100vh}
+.topbar{background:var(--navy);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;border-bottom:3px solid var(--teal)}
+.brand{font-size:15px;font-weight:700;color:#fff}.brand span{color:var(--teal2);font-size:10px;font-weight:400;margin-left:8px;letter-spacing:0.5px;text-transform:uppercase}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.upload-zone{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:7px;padding:5px 12px;cursor:pointer}
+.upload-zone:hover{background:rgba(255,255,255,0.14)}
+.upload-zone label{font-size:11px;color:#A8C4D8;cursor:pointer;font-weight:500}.upload-zone input{display:none}
+.file-badge{font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--teal);color:#fff;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.nav-tabs{display:flex;gap:1px;padding:0 20px;background:var(--navy2);border-bottom:1px solid rgba(255,255,255,0.08)}
+.nav-tab{padding:9px 16px;font-size:12px;font-weight:500;color:#7FA8C8;cursor:pointer;border:none;background:transparent;border-bottom:2px solid transparent;transition:all 0.15s}
+.nav-tab:hover{color:#fff}.nav-tab.active{color:var(--teal2);border-bottom-color:var(--teal2)}
+.ctrl-bar{background:#fff;border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.ctrl-group{display:flex;align-items:center;gap:6px}
+.ctrl-label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap}
+select.ctrl-sel{padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--slate);font-size:12px;font-family:'Inter',sans-serif;cursor:pointer;outline:none;min-width:120px}
+select.ctrl-sel:focus{border-color:var(--teal)}
+.mtd-toggle{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer;user-select:none}
+.mtd-toggle input[type=checkbox]{display:none}
+.mtd-sw{width:32px;height:17px;background:#CBD5E1;border-radius:20px;position:relative;transition:background 0.2s;flex-shrink:0}
+.mtd-sw::after{content:'';position:absolute;top:2px;left:2px;width:13px;height:13px;background:#fff;border-radius:50%;transition:left 0.2s;box-shadow:0 1px 2px rgba(0,0,0,0.2)}
+.mtd-toggle input:checked~.mtd-sw{background:var(--teal)}.mtd-toggle input:checked~.mtd-sw::after{left:17px}
+.mtd-lbl{font-size:11px;font-weight:600;color:var(--slate)}
+.mtd-info{font-size:10px;background:var(--teal-lt);color:var(--teal);padding:2px 8px;border-radius:10px;font-weight:600;display:none}
+.btn{padding:6px 14px;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.15s}
+.btn-navy{background:var(--navy);color:#fff}.btn-navy:hover{background:var(--navy2)}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.status-text{font-size:11px;color:var(--muted)}
+.page{display:none;padding:20px}.page.active{display:block}
+.sec-head{display:flex;align-items:baseline;gap:8px;margin-bottom:14px;margin-top:24px}
+.sec-head:first-child{margin-top:0}
+.sec-title{font-size:14px;font-weight:700;color:var(--navy)}.sec-sub{font-size:11px;color:var(--muted)}.sec-line{flex:1;height:1px;background:var(--border)}
+.mg{display:grid;gap:10px;margin-bottom:16px}
+.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}.g5{grid-template-columns:repeat(5,1fr)}
+.mc{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:12px 14px;border-left:4px solid var(--teal);box-shadow:0 1px 3px rgba(0,0,0,0.04);transition:box-shadow 0.15s}
+.mc:hover{box-shadow:0 4px 12px rgba(0,0,0,0.08)}
+.mc.gold{border-left-color:var(--gold)}.mc.red{border-left-color:var(--red)}.mc.green{border-left-color:var(--green)}.mc.purple{border-left-color:var(--purple)}
+.mc.navy{border-left-color:var(--navy);background:var(--navy)}.mc.navy .ml,.mc.navy .ms{color:#7FA8C8}.mc.navy .mv{color:#fff}
+.ml{font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:4px}
+.mv{font-size:20px;font-weight:700;color:var(--navy);line-height:1;font-family:'JetBrains Mono',monospace}
+.mv.sm{font-size:16px}.ms{font-size:10px;color:var(--muted);margin-top:3px}
+.ms .up{color:var(--green);font-weight:600}.ms .dn{color:var(--red);font-weight:600}
+.cg{display:grid;gap:14px;margin-bottom:16px}.cg2{grid-template-columns:1fr 1fr}.cg3{grid-template-columns:1fr 1fr 1fr}
+.cc{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+.ct{font-size:11px;font-weight:600;color:var(--navy);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.cb{font-size:9px;background:var(--teal-lt);color:var(--teal);padding:2px 7px;border-radius:20px;font-family:'JetBrains Mono',monospace;white-space:nowrap}
+canvas{max-width:100%}
+.tl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
+.tl-card{background:var(--card);border:1px solid var(--border);border-radius:9px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);transition:box-shadow 0.15s}
+.tl-card:hover{box-shadow:0 6px 18px rgba(0,0,0,0.1)}
+.tl-hdr{padding:10px 13px;display:flex;align-items:center;justify-content:space-between}
+.tl-name{font-size:12px;font-weight:700;color:#fff}.tl-mgr{font-size:9px;color:rgba(255,255,255,0.65);margin-top:1px}
+.tl-ach{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;padding:3px 9px;border-radius:5px;background:rgba(255,255,255,0.15);color:#fff}
+.tl-body{padding:11px 13px}
+.tl-stats{display:flex;justify-content:space-between;margin-bottom:8px;gap:4px}
+.tl-stat .sl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--muted);margin-bottom:2px}
+.tl-stat .sv{font-size:12px;font-weight:700;color:var(--navy);font-family:'JetBrains Mono',monospace}
+.tl-stat .ss{font-size:9px;color:var(--muted)}
+.pbar-bg{height:5px;background:var(--border);border-radius:10px;margin:8px 0;overflow:hidden}
+.pbar-fill{height:100%;border-radius:10px;transition:width 0.6s}
+.mini-tbl{font-size:10px;width:100%;border-collapse:collapse;margin-top:6px}
+.mini-tbl td{padding:3px 5px;border-bottom:1px solid var(--border)}
+.mini-tbl td:first-child{color:var(--muted)}.mini-tbl td:last-child{text-align:right;font-weight:600;color:var(--navy);font-family:'JetBrains Mono',monospace}
+.spark-wrap{padding:0 13px 8px;height:65px}
+.mgr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px}
+.mgr-card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.05)}
+.mgr-hdr{padding:12px 16px;color:#fff}.mgr-name{font-size:14px;font-weight:700}.mgr-role{font-size:9px;opacity:0.7;text-transform:uppercase;letter-spacing:0.5px}
+.mgr-body{padding:12px 16px}.mgr-mets{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.mgr-ml{font-size:9px;text-transform:uppercase;letter-spacing:0.4px;color:var(--muted);margin-bottom:1px}
+.mgr-mv{font-size:14px;font-weight:700;color:var(--navy);font-family:'JetBrains Mono',monospace}.mgr-ms{font-size:10px;color:var(--muted)}
+.tl-row{display:flex;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)}.tl-row:last-child{border-bottom:none}
+.tl-row-name{width:80px;font-size:10px;font-weight:600;color:var(--navy)}
+.tl-row-bar{flex:1;margin:0 8px;height:7px;background:var(--border);border-radius:10px;overflow:hidden}
+.tl-row-fill{height:100%;border-radius:10px}.tl-row-val{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);white-space:nowrap}
+.drr-wrap{overflow-x:auto;margin-bottom:16px;border-radius:9px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+.drr-tbl{width:100%;border-collapse:collapse;font-size:11px;white-space:nowrap}
+.drr-tbl th{background:var(--navy);color:#fff;padding:7px 9px;text-align:center;font-size:9px;font-weight:600;letter-spacing:0.4px;position:sticky;top:0;z-index:1}
+.drr-tbl th:first-child{text-align:left;position:sticky;left:0;z-index:3;min-width:120px}
+.drr-tbl td{padding:5px 9px;border-bottom:1px solid var(--border);text-align:center;font-family:'JetBrains Mono',monospace}
+.drr-tbl td:first-child{text-align:left;position:sticky;left:0;background:var(--card);font-weight:600;color:var(--navy);font-family:'Inter',sans-serif;z-index:1}
+.drr-tbl tr:nth-child(even) td{background:#FAFBFC}.drr-tbl tr:nth-child(even) td:first-child{background:#F5F7FA}
+.drr-tbl tr.tr-total td{background:var(--navy)!important;color:#fff!important;font-weight:700;font-family:'JetBrains Mono',monospace}
+.drr-tbl tr.tr-total td:first-child{color:var(--teal2)!important}
+.c-up{color:var(--green);font-weight:600}.c-dn{color:var(--red);font-weight:600}.c-na{color:#CBD5E1}
+.cmp-row{display:flex;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)}.cmp-row:last-child{border-bottom:none}
+.cmp-name{width:90px;font-size:10px;font-weight:600;color:var(--navy)}
+.cmp-bar{flex:1;margin:0 10px;height:12px;background:var(--border);border-radius:10px;overflow:hidden;position:relative}
+.cmp-bar-m{position:absolute;left:0;top:0;height:100%;border-radius:10px;opacity:0.45}
+.cmp-bar-c{position:absolute;left:0;top:0;height:100%;border-radius:10px}
+.cmp-vals{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-align:right;white-space:nowrap;min-width:90px}
+.pill{display:inline-block;padding:1px 6px;border-radius:20px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.pill.up{background:var(--green-lt);color:var(--green)}.pill.dn{background:var(--red-lt);color:var(--red)}.pill.neu{background:var(--border);color:var(--muted)}
+.placeholder{text-align:center;padding:80px 20px;color:var(--muted)}
+.placeholder h3{font-size:15px;font-weight:600;color:var(--slate);margin-bottom:6px}.placeholder p{font-size:12px;line-height:1.7}
+.ul-btn{margin-top:16px;display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:var(--navy);color:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer;border:none;font-family:'Inter',sans-serif}
+/* ── GOOGLE SHEETS MODAL ── */
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(11,31,58,0.6);z-index:500;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:14px;padding:28px;width:540px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.modal-title{font-size:16px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.modal-sub{font-size:12px;color:var(--muted);margin-bottom:20px;line-height:1.6}
+.modal-step{display:flex;gap:12px;margin-bottom:14px;align-items:flex-start}
+.modal-step-num{width:24px;height:24px;border-radius:50%;background:var(--navy);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.modal-step-text{font-size:12px;color:var(--slate);line-height:1.6}
+.modal-step-text strong{color:var(--navy)}
+.modal-step-text code{background:var(--bg);padding:1px 5px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--teal)}
+.url-input{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--slate);outline:none;margin-top:4px}
+.url-input:focus{border-color:var(--teal)}
+.url-input.error{border-color:var(--red)}
+.modal-actions{display:flex;gap:10px;margin-top:20px;justify-content:flex-end}
+.modal-err{font-size:11px;color:var(--red);margin-top:6px;display:none}
+.refresh-badge{font-size:10px;background:var(--green-lt);color:var(--green);padding:2px 8px;border-radius:20px;font-weight:600;margin-left:8px}
+.sheets-status{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div><span class="brand">IPT Monthly DRR Dashboard <span>Partner Channel · Vyapar</span></span></div>
+  <div class="topbar-right">
+    <div class="upload-zone" onclick="document.getElementById('fu').click()" style="cursor:pointer">
+      <label style="cursor:pointer">📂 Upload Excel</label>
+      <input type="file" id="fu" accept=".xlsx,.xls" multiple onchange="handleFiles(this.files)" style="display:none">
+    </div>
+    <div class="upload-zone" onclick="showSheetsModal()" style="cursor:pointer">
+      <label style="cursor:pointer;color:#4ADE80">🔗 Google Sheets</label>
+    </div>
+    <div id="fileBadge" class="file-badge" style="display:none"></div>
+  </div>
+</div>
+
+<div class="nav-tabs">
+  <button class="nav-tab active" onclick="showPage('overview',this)">Overview</button>
+  <button class="nav-tab" onclick="showPage('drr',this)">Daily DRR</button>
+  <button class="nav-tab" onclick="showPage('tl',this)">TL Wise</button>
+  <button class="nav-tab" onclick="showPage('manager',this)">Manager Wise</button>
+  <button class="nav-tab" onclick="showPage('compare',this)">Month Comparison</button>
+  <button class="nav-tab" onclick="showPage('dow',this)">Day of Week</button>
+</div>
+
+<div class="ctrl-bar">
+  <div class="ctrl-group">
+    <span class="ctrl-label">Primary Month</span>
+    <select class="ctrl-sel" id="selM1" onchange="render()"></select>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">Compare With</span>
+    <select class="ctrl-sel" id="selM2" onchange="render()"><option value="">— None —</option></select>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">Manager</span>
+    <select class="ctrl-sel" id="selMgr" onchange="render()">
+      <option value="ALL">All Managers</option>
+      <option value="Anuja">Anuja</option>
+      <option value="Shubham">Shubham</option>
+      <option value="Syed">Syed</option>
+      <option disabled>──────────</option>
+      <option value="Amarjit">Amarjit (Sr. Mgr)</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <label class="mtd-toggle" title="MTD: only compare the same number of elapsed days in the comparison month">
+      <input type="checkbox" id="mtdChk" onchange="onMTDChange()">
+      <div class="mtd-sw"></div>
+      <span class="mtd-lbl">MTD Mode</span>
+    </label>
+    <span class="mtd-info" id="mtdInfo"></span>
+  </div>
+  <button class="btn btn-navy" onclick="render()">↻ Refresh</button>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+    <span class="live-dot"></span>
+    <span class="status-text" id="statusTxt">No data loaded — upload Excel files to begin</span>
+  </div>
+</div>
+
+<div class="page active" id="page-overview">
+  <div id="ov-content"><div class="placeholder">
+    <h3>Connect your data to get started</h3>
+    <p>Choose how to load your IPT Partner Wise Daily Licenses data.</p>
+    <div style="display:flex;gap:16px;justify-content:center;margin-top:20px;flex-wrap:wrap">
+      <div onclick="showSheetsModal()" style="cursor:pointer;background:#fff;border:2px solid var(--teal);border-radius:10px;padding:20px 28px;text-align:center;min-width:200px;transition:box-shadow 0.15s" onmouseover="this.style.boxShadow='0 4px 16px rgba(8,145,178,0.2)'" onmouseout="this.style.boxShadow='none'">
+        <div style="font-size:28px;margin-bottom:8px">🔗</div>
+        <div style="font-weight:700;color:var(--navy);font-size:13px">Google Sheets (Live)</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Auto-refreshes · share with anyone<br>No uploads needed</div>
+      </div>
+      <label for="fu" style="cursor:pointer;background:#fff;border:2px solid var(--border);border-radius:10px;padding:20px 28px;text-align:center;min-width:200px;transition:box-shadow 0.15s" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+        <input type="file" id="fu2" accept=".xlsx,.xls" multiple onchange="handleFiles(this.files)" style="display:none">
+        <div style="font-size:28px;margin-bottom:8px">📂</div>
+        <div style="font-weight:700;color:var(--navy);font-size:13px">Upload Excel Files</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Works offline · manual refresh<br>Upload each time</div>
+      </label>
+    </div>
+  </div></div>
+</div>
+<div class="page" id="page-drr"><div id="drr-content"><div class="placeholder"><h3>Daily DRR</h3><p>Upload data to begin.</p></div></div></div>
+<div class="page" id="page-tl"><div id="tl-content"><div class="placeholder"><h3>TL Wise View</h3><p>Upload data to begin.</p></div></div></div>
+<div class="page" id="page-manager"><div id="mgr-content"><div class="placeholder"><h3>Manager Wise View</h3><p>Upload data to begin.</p></div></div></div>
+<div class="page" id="page-compare"><div id="cmp-content"><div class="placeholder"><h3>Month Comparison</h3><p>Select two months to compare.</p></div></div></div>
+<div class="page" id="page-dow"><div id="dow-content"><div class="placeholder"><h3>Day of Week Analysis</h3><p>Upload data to begin.</p></div></div></div>
+
+<!-- GOOGLE SHEETS MODAL -->
+<div class="modal-overlay" id="sheetsModal" onclick="if(event.target===this)closeSheetsModal()">
+  <div class="modal">
+    <div class="modal-title">&#128279; Connect Google Sheets (Live Data)</div>
+    <div class="modal-sub">Uses JSONP &mdash; works when opening the HTML directly from your computer. No web server needed.</div>
+
+    <div class="modal-step">
+      <div class="modal-step-num">1</div>
+      <div class="modal-step-text">Open your Google Sheet &rarr; <strong>Extensions &rarr; Apps Script</strong>. Delete any existing code and paste this:</div>
+    </div>
+    <div style="background:#0B1F3A;border-radius:8px;padding:12px 14px;margin:0 0 14px 36px;font-family:monospace;font-size:10px;color:#A8C4D8;line-height:1.7;overflow-x:auto;white-space:pre">function doGet(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data  = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var rows = data.slice(1).map(function(row) {
+    var obj = {};
+    headers.forEach(function(h, i) { obj[h] = row[i]; });
+    return obj;
+  });
+  var cb = e &amp;&amp; e.parameter &amp;&amp; e.parameter.callback ? e.parameter.callback : null;
+  if (cb) {
+    // JSONP mode
+    return ContentService.createTextOutput(cb + '(' + JSON.stringify(rows) + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  // JSON mode (fetch with CORS)
+  return ContentService.createTextOutput(JSON.stringify(rows))
+    .setMimeType(ContentService.MimeType.JSON);
+}</div>
+
+    <div class="modal-step">
+      <div class="modal-step-num">2</div>
+      <div class="modal-step-text">Click <strong>Deploy &rarr; New deployment</strong> &rarr; Type: <strong>Web app</strong> &rarr; Execute as: <strong>Me</strong> &rarr; Who has access: <strong>Anyone</strong> &rarr; Click <strong>Deploy</strong>. Copy the Web app URL.</div>
+    </div>
+
+    <div class="modal-step">
+      <div class="modal-step-num">3</div>
+      <div class="modal-step-text">Paste the URL below. It should look like:<br>
+        <code>https://script.google.com/macros/s/ABC123.../exec</code>
+      </div>
+    </div>
+
+    <div style="margin-top:4px">
+      <div style="font-size:11px;font-weight:600;color:var(--navy);margin-bottom:6px">Apps Script Web App URL:</div>
+      <input type="text" id="sheetsUrls" class="url-input" placeholder="https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec">
+      <div class="modal-err" id="sheetsErr"></div>
+    </div>
+
+    <div style="margin-top:12px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--slate)">
+        <input type="checkbox" id="autoRefresh" checked style="accent-color:var(--teal)">
+        Auto-refresh every
+        <select id="refreshInterval" style="margin:0 4px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;font-size:11px">
+          <option value="300000">5 minutes</option>
+          <option value="600000">10 minutes</option>
+          <option value="1800000">30 minutes</option>
+          <option value="3600000">1 hour</option>
+        </select>
+        when dashboard is open
+      </label>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn" style="background:var(--bg);color:var(--slate);border:1px solid var(--border)" onclick="closeSheetsModal()">Cancel</button>
+      <button class="btn btn-navy" onclick="connectSheets()">&#128279; Connect &amp; Load</button>
+    </div>
+  </div>
+</div>
+
+<footer>IPT Monthly DRR Dashboard · Partner Channel · Vyapar · <span id="dataSource">No data loaded</span></footer>
+
+<script>
+// ═══ ORG + TARGETS ═══
+const TL_MAP = {
+  'aakash.santhosh@vyapar.com':    {name:'Aakash',    manager:'Anuja',   srMgr:'Anuja',   tgt:696864},
+  'abhisheksulakhe@vyaparapp.in':  {name:'Abhishek',  manager:'Anuja',   srMgr:'Anuja',   tgt:796416},
+  'jacksonroy@vyaparapp.in':       {name:'Jackson',   manager:'Anuja',   srMgr:'Anuja',   tgt:730048},
+  'gulandam@vyapar.com':           {name:'Gul',       manager:'Anuja',   srMgr:'Anuja',   tgt:730048},
+  'samueljobe.anibera@vyapar.com': {name:'Samuel',    manager:'Anuja',   srMgr:'Anuja',   tgt:796416},
+  'siddhant@vyaparapp.in':         {name:'Siddhant',  manager:'Anuja',   srMgr:'Anuja',   tgt:451303},
+  'raviranjan.pandey@vyapar.com':  {name:'Ravi',      manager:'Anuja',   srMgr:'Anuja',   tgt:663680},
+  'gyanaranjan@vyaparapp.in':      {name:'Gyana',     manager:'Shubham', srMgr:'Amarjit', tgt:663680},
+  'nuthan.m@vyaparapp.in':         {name:'Nuthan',    manager:'Shubham', srMgr:'Amarjit', tgt:663680},
+  'madangowda@vyaparapp.in':       {name:'Madan',     manager:'Shubham', srMgr:'Amarjit', tgt:1061888},
+  'aeman.b@vyaparapp.in':          {name:'Aeman',     manager:'Shubham', srMgr:'Amarjit', tgt:1460097},
+  'cheenagarg@vyaparapp.in':       {name:'Cheena',    manager:'Shubham', srMgr:'Amarjit', tgt:1194625},
+  'rinkikashyap@vyaparapp.in':     {name:'Rinki',     manager:'Shubham', srMgr:'Amarjit', tgt:1061888},
+  'biswambardas@vyaparapp.in':     {name:'Biswambar', manager:'Shubham', srMgr:'Amarjit', tgt:1460097},
+  'sidharthapolai@vyaparapp.in':   {name:'Sidhartha', manager:'Shubham', srMgr:'Amarjit', tgt:1791937},
+  'vinitsomavanshi@vyaparapp.in':  {name:'Vinit',     manager:'Syed',    srMgr:'Amarjit', tgt:2455617},
+  'sathisha@vyaparapp.in':         {name:'Sathish',   manager:'Syed',    srMgr:'Amarjit', tgt:2256513},
+  'hafizulla@vyaparapp.in':        {name:'Hafiz',     manager:'Syed',    srMgr:'Amarjit', tgt:2289697},
+  'praveenmishra@vyaparapp.in':    {name:'Praveen',   manager:'Syed',    srMgr:'Amarjit', tgt:3119297},
+  'faizalam@vyaparapp.in':         {name:'Faiz',      manager:'Syed',    srMgr:'Amarjit', tgt:1924673},
+  'ramkaran@vyaparapp.in':         {name:'Ramkaran',  manager:'Syed',    srMgr:'Amarjit', tgt:1991041},
+};
+const MGR_TGT    = {Anuja:4864775, Shubham:9357792, Syed:14036838}; // Apr'26 from IPT_Targets_FY27.xlsx
+const SRMGR_TGT  = {Amarjit:23394630}; // Shubham + Syed only
+const MGR_CLR    = {Anuja:'#0891B2',Shubham:'#7C3AED',Syed:'#D97706'};
+const TL_CLR     = ['#0891B2','#7C3AED','#059669','#D97706','#DC2626','#2563EB','#0B1F3A','#BE185D','#0D9488','#B45309','#6D28D9'];
+const CLR_MGR    = {Anuja:'#0891B2',Shubham:'#7C3AED',Syed:'#D97706'};
+
+// ═══ STATE ═══
+let allData = [];
+const CHARTS = {};
+
+// ═══ FILE HANDLING ═══
+async function handleFiles(files) {
+  if (!files||!files.length) return;
+  document.getElementById('statusTxt').textContent = 'Loading…';
+  for (const f of files) {
+    const rows = await readXLSX(f);
+    const existing = new Set(allData.map(r=>`${r.month}|${r.date}|${r.tl}|${r.agent}|${r.ref}`));
+    for (const r of rows) {
+      const k = `${r.month}|${r.date}|${r.tl}|${r.agent}|${r.ref}`;
+      if (!existing.has(k)) { allData.push(r); existing.add(k); }
+    }
+  }
+  refreshSelects();
+  const nm = getMonths().length;
+  document.getElementById('fileBadge').style.display='inline';
+  document.getElementById('fileBadge').textContent=`${allData.length} rows · ${nm} months`;
+  document.getElementById('statusTxt').textContent=`${allData.length} records · ${nm} months`;
+  render();
+}
+
+function readXLSX(file) {
+  return new Promise(res=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const raw=XLSX.utils.sheet_to_json(ws,{raw:false});
+      const rows=[];
+      for (const row of raw) {
+        const month=parseMonthStr((row.payment_month||'').toString().trim());
+        const dateStr=parseDateStr((row.payment_date||'').toString().trim());
+        const tl=(row.team_lead||'').toString().trim().toLowerCase();
+        if (!month||!dateStr||!tl||tl==='old partners') continue;
+        rows.push({month,date:dateStr,tl,
+          agent:(row.agent_email||'').toString().trim(),
+          ref:(row.referral_code||'').toString().trim(),
+          lic:parseFloat(row.total_licenses)||0,
+          dlic:parseFloat(row.desktop_licenses)||0,
+          rev:parseFloat(row.rev_ex_gst)||0});
+      }
+      res(rows);
+    };
+    r.readAsBinaryString(file);
+  });
+}
+
+function getMonths(){ return [...new Set(allData.map(r=>r.month))].sort(); }
+
+function refreshSelects(){
+  const months=getMonths();
+  const s1=document.getElementById('selM1'),s2=document.getElementById('selM2');
+  const p1=s1.value,p2=s2.value;
+  s1.innerHTML=months.map(m=>`<option value="${m}">${fmtMonth(m)}</option>`).join('');
+  s2.innerHTML=`<option value="">— None —</option>`+months.map(m=>`<option value="${m}">${fmtMonth(m)}</option>`).join('');
+  s1.value=p1&&months.includes(p1)?p1:months[months.length-1];
+  s2.value=p2&&months.includes(p2)?p2:(months.length>=2?months[months.length-2]:'');
+}
+
+// ═══ MTD ═══
+function isMTD(){ return document.getElementById('mtdChk').checked; }
+function onMTDChange(){
+  const on=isMTD();
+  const info=document.getElementById('mtdInfo');
+  if (on){
+    const m1=document.getElementById('selM1').value;
+    const e=getElapsed(m1);
+    info.style.display='inline';
+    info.textContent=`MTD: first ${e} days`;
+  } else { info.style.display='none'; }
+  render();
+}
+function getElapsed(month){
+  return [...new Set(allData.filter(r=>r.month===month).map(r=>r.date))].length;
+}
+// Slice compare-month rows to the first N distinct dates (N = elapsed days in primary month)
+function sliceMTD(rows, month, cutoff){
+  const dates=[...new Set(rows.filter(r=>r.month===month).map(r=>r.date))].sort().slice(0,cutoff);
+  const allowed=new Set(dates);
+  return rows.filter(r=>r.month===month&&allowed.has(r.date));
+}
+
+// ═══ DATA HELPERS ═══
+function getRows(month, mgrFilter){
+  let rows=allData.filter(r=>r.month===month);
+  if (mgrFilter&&mgrFilter!=='ALL'){
+    if(mgrFilter==='Amarjit'){
+      // Amarjit = Shubham + Syed only (Anuja is independent)
+      const tls=Object.entries(TL_MAP).filter(([,v])=>v.manager==='Shubham'||v.manager==='Syed').map(([k])=>k);
+      rows=rows.filter(r=>tls.includes(r.tl));
+    } else {
+      const tls=Object.entries(TL_MAP).filter(([,v])=>v.manager===mgrFilter).map(([k])=>k);
+      rows=rows.filter(r=>tls.includes(r.tl));
+    }
+  }
+  return rows;
+}
+function getPair(m1,m2,mgrFilter){
+  const r1=getRows(m1,mgrFilter);
+  if (!m2) return [r1,null];
+  let r2=getRows(m2,mgrFilter);
+  if (isMTD()){
+    const cutoff=getElapsed(m1);
+    // get all rows for m2 (unfiltered by mgr first for date slicing)
+    const allM2=allData.filter(r=>r.month===m2);
+    const dates2=[...new Set(allM2.map(r=>r.date))].sort().slice(0,cutoff);
+    const allowed=new Set(dates2);
+    r2=r2.filter(r=>allowed.has(r.date));
+  }
+  return [r1,r2];
+}
+function byTL(rows){
+  const out={};
+  for (const r of rows){
+    if (!out[r.tl]) out[r.tl]={rev:0,lic:0,dlic:0,dates:{}};
+    out[r.tl].rev+=r.rev; out[r.tl].lic+=r.lic; out[r.tl].dlic+=r.dlic;
+    out[r.tl].dates[r.date]=(out[r.tl].dates[r.date]||0)+r.rev;
+  }
+  return out;
+}
+function byDate(rows){
+  const out={};
+  for (const r of rows) out[r.date]=(out[r.date]||0)+r.rev;
+  return out;
+}
+function daysInMonth(month){ const [y,m]=month.split('-').map(Number); return new Date(y,m,0).getDate(); }
+function parseDateLocal(s){ if(!s) return new Date(NaN); const [y,m,d]=(s+'').slice(0,10).split('-').map(Number); return new Date(y,m-1,d); }
+
+// Parse a date value (from XLSX or Sheets) into YYYY-MM-DD string
+function parseDateStr(v){
+  if(!v) return '';
+  // ISO UTC string like "2026-03-31T18:30:00.000Z" — convert to IST (+5:30) first
+  if(/^\d{4}-\d{2}-\d{2}T/.test(v)){
+    var d = new Date(v);
+    var ist = new Date(d.getTime() + 5.5*60*60*1000);
+    var y = ist.getUTCFullYear();
+    var m = String(ist.getUTCMonth()+1).padStart(2,'0');
+    var dy = String(ist.getUTCDate()).padStart(2,'0');
+    return y+'-'+m+'-'+dy;
+  }
+  // Already YYYY-MM-DD
+  if(/^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0,10);
+  // M/D/YYYY or MM/DD/YYYY (SheetJS default format)
+  var s=v.split('/');
+  if(s.length===3){
+    var mo=s[0].padStart(2,'0'), dy=s[1].padStart(2,'0'), yr=s[2].slice(0,4);
+    return yr+'-'+mo+'-'+dy;
+  }
+  // D-M-YYYY
+  var d2=v.split('-');
+  if(d2.length===3&&d2[2].length===4){
+    return d2[2]+'-'+d2[1].padStart(2,'0')+'-'+d2[0].padStart(2,'0');
+  }
+  return v.slice(0,10);
+}
+
+// Parse a month value into YYYY-MM string
+function parseMonthStr(v){
+  if(!v) return '';
+  // ISO UTC string like "2026-03-31T18:30:00.000Z" — convert to IST (+5:30) before extracting month
+  if(/^\d{4}-\d{2}-\d{2}T/.test(v)){
+    var d = new Date(v);
+    var ist = new Date(d.getTime() + 5.5*60*60*1000);
+    var y = ist.getUTCFullYear();
+    var m = String(ist.getUTCMonth()+1).padStart(2,'0');
+    return y+'-'+m;
+  }
+  // Already YYYY-MM or YYYY-MM-DD
+  if(/^\d{4}-\d{2}/.test(v)) return v.slice(0,7);
+  // M/D/YYYY
+  var s=v.split('/');
+  if(s.length===3){
+    return s[2].slice(0,4)+'-'+s[0].padStart(2,'0');
+  }
+  return v.slice(0,7);
+}
+function totalTgt(mgrFilter){
+  if (!mgrFilter||mgrFilter==='ALL') return Object.values(TL_MAP).reduce((s,v)=>s+v.tgt,0);
+  if (mgrFilter==='Amarjit') return Object.entries(TL_MAP).filter(([,v])=>v.manager==='Shubham'||v.manager==='Syed').reduce((s,[,v])=>s+v.tgt,0);
+  return Object.entries(TL_MAP).filter(([,v])=>v.manager===mgrFilter).reduce((s,[,v])=>s+v.tgt,0);
+}
+
+// ═══ FORMAT ═══
+function fmtMonth(m){ if(!m) return ''; try{ const [y,mo]=m.split('-').map(Number); return new Date(y,mo-1,1).toLocaleString('en-IN',{month:'short',year:'2-digit'}); }catch{return m;} }
+function fmtRev(v,d=1){ if(v>=1e7) return '₹'+(v/1e7).toFixed(d)+'Cr'; if(v>=1e5) return '₹'+(v/1e5).toFixed(d)+'L'; if(v>=1e3) return '₹'+(v/1e3).toFixed(d)+'K'; return '₹'+Math.round(v).toLocaleString('en-IN'); }
+function fmtPct(v){ return isNaN(v)||!isFinite(v)?'—':(v>=0?'+':'')+v.toFixed(1)+'%'; }
+function pctClr(v){ return v>=100?'var(--green)':v>=80?'var(--gold)':'var(--red)'; }
+function chgClr(v){ return v>=0?'var(--green)':'var(--red)'; }
+function mkPill(chg){ if(chg===null||chg===undefined) return `<span class="pill neu">—</span>`; return `<span class="pill ${chg>=0?'up':'dn'}">${fmtPct(chg)}</span>`; }
+
+// ═══ CHART FACTORY ═══
+// Shared tooltip config — this is the fix for hover values not showing
+const TOOLTIP_CFG = {
+  enabled: true,
+  backgroundColor: 'rgba(11,31,58,0.93)',
+  titleColor: '#06B6D4',
+  bodyColor: '#e2e8f0',
+  borderColor: 'rgba(255,255,255,0.12)',
+  borderWidth: 1,
+  padding: 10,
+  titleFont: {family:'Inter',size:11,weight:'600'},
+  bodyFont:  {family:'JetBrains Mono',size:11},
+  callbacks: {
+    label: ctx => {
+      const v = ctx.parsed?.y ?? ctx.parsed;
+      return ` ${ctx.dataset.label||''}: ${fmtRev(v)}`;
+    }
+  }
+};
+
+function mkChart(id, type, data, extra={}){
+  const el=document.getElementById(id);
+  if (!el) return;
+  if (CHARTS[id]){ CHARTS[id].destroy(); delete CHARTS[id]; }
+  CHARTS[id]=new Chart(el,{type,data,options:{
+    responsive:true,
+    maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{
+      legend:{display:true,labels:{font:{family:'Inter',size:10},color:'#334155',boxWidth:10,padding:10}},
+      tooltip:TOOLTIP_CFG
+    },
+    scales:{
+      x:{grid:{display:false},ticks:{color:'#94A3B8',font:{family:'JetBrains Mono',size:9}}},
+      y:{grid:{color:'rgba(226,232,240,0.7)'},ticks:{color:'#94A3B8',font:{family:'JetBrains Mono',size:9},callback:v=>fmtRev(v,0)}}
+    },
+    ...extra
+  }});
+}
+
+// Sparkline with tooltips
+function mkSpark(id, labels, data, color){
+  const el=document.getElementById(id);
+  if (!el) return;
+  if (CHARTS[id]){ CHARTS[id].destroy(); delete CHARTS[id]; }
+  CHARTS[id]=new Chart(el,{
+    type:'bar',
+    data:{labels,datasets:[{data,backgroundColor:color+'99',borderColor:color,borderWidth:1,borderRadius:2}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          enabled:true,
+          backgroundColor:'rgba(11,31,58,0.93)',
+          titleColor:'#06B6D4',
+          bodyColor:'#e2e8f0',
+          padding:8,
+          titleFont:{family:'Inter',size:10,weight:'600'},
+          bodyFont:{family:'JetBrains Mono',size:10},
+          callbacks:{
+            title:items=>`Day ${items[0].label}`,
+            label:ctx=>` ${fmtRev(ctx.parsed.y)}`
+          }
+        }
+      },
+      scales:{x:{display:false},y:{display:false}},
+      animation:{duration:300}
+    }
+  });
+}
+
+// ═══ NAV ═══
+function showPage(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(el) el.classList.add('active');
+}
+
+// ═══ RENDER ═══
+function render(){
+  if(!allData.length) return;
+  const m1=document.getElementById('selM1').value;
+  const m2=document.getElementById('selM2').value||null;
+  const mgr=document.getElementById('selMgr').value;
+  const mtd=isMTD();
+  const elapsed=getElapsed(m1);
+  const info=document.getElementById('mtdInfo');
+  if(mtd&&m2){ info.style.display='inline'; info.textContent=`MTD: first ${elapsed} days`; }
+  else { info.style.display='none'; }
+  renderOverview(m1,m2,mgr,mtd,elapsed);
+  renderDRR(m1,m2,mgr,mtd,elapsed);
+  renderTL(m1,m2,mgr,mtd,elapsed);
+  renderMgr(m1,m2,mtd,elapsed);
+  renderCmp(m1,m2,mgr,mtd,elapsed);
+  renderDOW(m1,m2,mgr,mtd,elapsed);
+}
+
+// ═══════════════ OVERVIEW ═══════════════
+function renderOverview(m1,m2,mgr,mtd,elapsed){
+  const [r1,r2]=getPair(m1,m2,mgr);
+  const rev1=r1.reduce((s,r)=>s+r.rev,0);
+  const rev2=r2?r2.reduce((s,r)=>s+r.rev,0):null;
+  const lic1=r1.reduce((s,r)=>s+r.lic,0);
+  const tls1=[...new Set(r1.map(r=>r.tl))].filter(t=>TL_MAP[t]);
+  const bd1=byDate(r1),bd2=r2?byDate(r2):{};
+  const dates1=Object.keys(bd1).sort(),dates2=Object.keys(bd2).sort();
+  const days=daysInMonth(m1),tgt=totalTgt(mgr);
+  const ach=tgt>0?rev1/tgt*100:0;
+  const avgD=elapsed>0?rev1/elapsed:0;
+  const proj=avgD*days;
+  const chg=rev2!=null&&rev2>0?(rev1-rev2)/rev2*100:null;
+  const dLeft=days-elapsed;
+  const mtdTag=mtd&&m2?` <span class="pill neu">MTD ${elapsed}d</span>`:'';
+  const cmpLabel=m2?` vs ${fmtMonth(m2)}${mtdTag}`:'';
+
+  document.getElementById('ov-content').innerHTML=`
+  <div class="sec-head"><span class="sec-title">Overview — ${fmtMonth(m1)}${cmpLabel}</span>${mgr!=='ALL'?`<span class="sec-sub">· ${mgr==='Amarjit'?'Amarjit · All IPT':mgr+"'s team"}</span>`:''}<div class="sec-line"></div></div>
+  <div class="mg g5">
+    <div class="mc navy"><div class="ml">MTD Revenue</div><div class="mv sm">${fmtRev(rev1)}</div>
+      <div class="ms">${chg!==null?`<span class="${chg>=0?'up':'dn'}">${fmtPct(chg)} vs ${fmtMonth(m2)}</span>`:''}</div></div>
+    <div class="mc ${ach>=100?'green':ach>=80?'gold':'red'}"><div class="ml">Achievement</div><div class="mv">${ach.toFixed(1)}%</div>
+      <div class="ms">${fmtRev(rev1)} of ${fmtRev(tgt)}</div></div>
+    <div class="mc"><div class="ml">Days ${elapsed}/${days}</div><div class="mv">${elapsed}<span style="font-size:12px;color:var(--muted)">/${days}</span></div>
+      <div class="ms">Avg/day: ${fmtRev(avgD)}</div></div>
+    <div class="mc gold"><div class="ml">Projected Month</div><div class="mv sm">${fmtRev(proj)}</div>
+      <div class="ms">Gap: ${fmtRev(Math.max(0,tgt-rev1))} · ${dLeft}d left</div></div>
+    <div class="mc purple"><div class="ml">Active TLs</div><div class="mv">${tls1.length}</div>
+      <div class="ms">${lic1.toLocaleString()} licenses</div></div>
+  </div>
+  <div class="cg cg2">
+    <div class="cc"><div class="ct">Daily Revenue${m2?` — ${fmtMonth(m1)} vs ${fmtMonth(m2)}${mtd?' (MTD)':''}`:''}<span class="cb">₹</span></div>
+      <div style="height:200px"><canvas id="ch-ov-d"></canvas></div></div>
+    <div class="cc"><div class="ct">Cumulative vs Target<span class="cb">Running total</span></div>
+      <div style="height:200px"><canvas id="ch-ov-c"></canvas></div></div>
+  </div>
+  <div class="cg cg2">
+    <div class="cc"><div class="ct">TL Revenue Contribution<span class="cb">${fmtMonth(m1)}</span></div>
+      <div style="height:220px"><canvas id="ch-ov-donut"></canvas></div></div>
+    <div class="cc"><div class="ct">Manager Revenue${m2?` — ${fmtMonth(m1)} vs ${fmtMonth(m2)}${mtd?' MTD':''}`:''}<span class="cb">₹</span></div>
+      <div style="height:220px"><canvas id="ch-ov-mgr"></canvas></div></div>
+  </div>`;
+
+  // Daily bar
+  const allDates=[...new Set([...dates1,...dates2])].sort();
+  const ds=[{label:fmtMonth(m1),data:allDates.map(d=>bd1[d]||0),backgroundColor:'rgba(8,145,178,0.75)',borderColor:'#0891B2',borderWidth:1,borderRadius:3}];
+  if(m2) ds.push({label:fmtMonth(m2)+(mtd?' MTD':''),data:allDates.map(d=>bd2[d]||0),backgroundColor:'rgba(217,119,6,0.6)',borderColor:'#D97706',borderWidth:1,borderRadius:3});
+  mkChart('ch-ov-d','bar',{labels:allDates.map(d=>d.slice(5)),datasets:ds});
+
+  // Cumulative
+  let c1=0,c2=0;
+  const cum1=dates1.map(d=>{c1+=bd1[d]||0;return c1;});
+  const cum2=dates2.map(d=>{c2+=bd2[d]||0;return c2;});
+  const tgtLine=Array.from({length:days},(_,i)=>tgt*(i+1)/days);
+  const cumDs=[
+    {label:fmtMonth(m1),data:cum1,borderColor:'#0891B2',backgroundColor:'rgba(8,145,178,0.07)',fill:true,tension:0.3,pointRadius:2,borderWidth:2.5},
+    {label:'Target',data:tgtLine,borderColor:'#DC2626',backgroundColor:'transparent',borderDash:[5,3],pointRadius:0,borderWidth:1.5,tension:0},
+  ];
+  if(m2) cumDs.push({label:fmtMonth(m2)+(mtd?' MTD':''),data:cum2,borderColor:'#D97706',backgroundColor:'transparent',tension:0.3,pointRadius:2,borderWidth:1.5,borderDash:[3,2]});
+  mkChart('ch-ov-c','line',{labels:Array.from({length:days},(_,i)=>i+1),datasets:cumDs});
+
+  // Donut — override tooltip for doughnut
+  const bt=byTL(r1);
+  const tlS=Object.entries(bt).filter(([k])=>TL_MAP[k]).sort((a,b)=>b[1].rev-a[1].rev).slice(0,10);
+  const el=document.getElementById('ch-ov-donut');
+  if(el){ if(CHARTS['ch-ov-donut']){CHARTS['ch-ov-donut'].destroy();delete CHARTS['ch-ov-donut'];}
+    CHARTS['ch-ov-donut']=new Chart(el,{type:'doughnut',
+      data:{labels:tlS.map(([k])=>TL_MAP[k]?.name||k),datasets:[{data:tlS.map(([,v])=>v.rev),backgroundColor:TL_CLR,borderWidth:2,borderColor:'#fff'}]},
+      options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:true},
+        plugins:{legend:{position:'right',labels:{font:{family:'Inter',size:10},boxWidth:10,padding:7}},
+        tooltip:Object.assign({},TOOLTIP_CFG,{enabled:true,callbacks:{label:function(ctx){return ctx.label+': '+fmtRev(ctx.parsed);}}}),scales:{}}}}); }
+
+  // Manager bar
+  const mgrs=mgr==='Amarjit'?['Shubham','Syed']:['Anuja','Shubham','Syed'];
+  const mRev1=mgrs.map(mg=>{const ts=Object.entries(TL_MAP).filter(([,v])=>v.manager===mg).map(([k])=>k);return r1.filter(r=>ts.includes(r.tl)).reduce((s,r)=>s+r.rev,0);});
+  const mDs=[{label:fmtMonth(m1),data:mRev1,backgroundColor:mgrs.map(m=>MGR_CLR[m]),borderRadius:4}];
+  if(r2){
+    const mRev2=mgrs.map(mg=>{const ts=Object.entries(TL_MAP).filter(([,v])=>v.manager===mg).map(([k])=>k);return r2.filter(r=>ts.includes(r.tl)).reduce((s,r)=>s+r.rev,0);});
+    mDs.push({label:fmtMonth(m2)+(mtd?' MTD':''),data:mRev2,backgroundColor:mgrs.map(m=>MGR_CLR[m]+'66'),borderRadius:4,borderWidth:1.5,borderColor:mgrs.map(m=>MGR_CLR[m])});
+  }
+  mkChart('ch-ov-mgr','bar',{labels:mgrs,datasets:mDs},{scales:{x:{grid:{display:false},ticks:{font:{family:'Inter',size:11},color:'#334155'}},y:{grid:{color:'rgba(226,232,240,0.7)'},ticks:{callback:v=>fmtRev(v,0),font:{family:'JetBrains Mono',size:9}}}}});
+}
+
+// ═══════════════ DAILY DRR ═══════════════
+function renderDRR(m1,m2,mgr,mtd,elapsed){
+  const [r1]=getPair(m1,m2,mgr);
+  const bd1=byDate(r1),dates1=Object.keys(bd1).sort();
+  const days=daysInMonth(m1),tgt=totalTgt(mgr);
+  const rev1=r1.reduce((s,r)=>s+r.rev,0);
+  const avgD=elapsed>0?rev1/elapsed:0;
+  const ach=tgt>0?rev1/tgt*100:0;
+  const dLeft=days-elapsed;
+  const needed=dLeft>0?Math.max(0,tgt-rev1)/dLeft:0;
+  const bt=byTL(r1);
+  const tlS=Object.keys(bt).filter(t=>TL_MAP[t]).sort((a,b)=>(bt[b]?.rev||0)-(bt[a]?.rev||0));
+  const mtdTag=mtd?` <span class="pill neu">MTD ${elapsed}d</span>`:'';
+
+  const tlRows=tlS.map(tl=>{
+    const info=TL_MAP[tl],d=bt[tl]||{};
+    const rev=d.rev||0,a=info.tgt>0?rev/info.tgt*100:0;
+    const el2=Object.keys(d.dates||{}).length,avgTL=el2>0?rev/el2:0;
+    const aStyle=a>=100?'color:var(--green)':a>=80?'color:var(--gold)':'color:var(--red)';
+    const cells=dates1.map(dt=>{const v=d.dates?.[dt];return v?`<td>${fmtRev(v,0)}</td>`:`<td class="c-na">—</td>`;}).join('');
+    return `<tr><td><strong>${info.name}</strong><br><span style="font-size:9px;color:var(--muted)">${info.manager}</span></td>
+      <td style="${aStyle};font-weight:700">${a.toFixed(0)}%</td>
+      <td>${fmtRev(rev)}</td><td>${fmtRev(info.tgt)}</td><td>${fmtRev(avgTL,0)}</td>${cells}</tr>`;
+  }).join('');
+
+  const totCells=dates1.map(dt=>`<td>${fmtRev(Object.values(bt).reduce((s,d)=>s+(d.dates?.[dt]||0),0),0)}</td>`).join('');
+
+  document.getElementById('drr-content').innerHTML=`
+  <div class="sec-head"><span class="sec-title">Daily Revenue Report — ${fmtMonth(m1)}${mtdTag}</span>
+    <span class="sec-sub">${elapsed} of ${days} days</span><div class="sec-line"></div></div>
+  <div class="mg g5">
+    <div class="mc navy"><div class="ml">MTD Revenue</div><div class="mv sm">${fmtRev(rev1)}</div><div class="ms">Target: ${fmtRev(tgt)}</div></div>
+    <div class="mc ${ach>=100?'green':ach>=80?'gold':'red'}"><div class="ml">Achievement</div><div class="mv">${ach.toFixed(1)}%</div><div class="ms">Gap: ${fmtRev(Math.max(0,tgt-rev1))}</div></div>
+    <div class="mc"><div class="ml">Avg / Day</div><div class="mv sm">${fmtRev(avgD)}</div><div class="ms">${elapsed} days elapsed</div></div>
+    <div class="mc gold"><div class="ml">Days Remaining</div><div class="mv">${dLeft}</div><div class="ms">Need ${fmtRev(needed)}/day</div></div>
+    <div class="mc ${needed<=avgD?'green':'red'}"><div class="ml">Projected Month</div><div class="mv sm">${fmtRev(avgD*days)}</div><div class="ms">${avgD*days>=tgt?'On track ✓':'Needs pickup ↑'}</div></div>
+  </div>
+  <div class="drr-wrap"><table class="drr-tbl">
+    <thead><tr><th>TL</th><th>Ach%</th><th>Revenue</th><th>Target</th><th>Avg/Day</th>
+      ${dates1.map(d=>`<th>${d.slice(5)}</th>`).join('')}</tr></thead>
+    <tbody>${tlRows}
+      <tr class="tr-total"><td>TOTAL</td><td>${ach.toFixed(0)}%</td><td>${fmtRev(rev1)}</td><td>${fmtRev(tgt)}</td><td>${fmtRev(avgD,0)}</td>${totCells}</tr>
+    </tbody>
+  </table></div>`;
+}
+
+// ═══════════════ TL WISE ═══════════════
+function renderTL(m1,m2,mgr,mtd,elapsed){
+  const [r1,r2]=getPair(m1,m2,mgr);
+  const bt1=byTL(r1),bt2=r2?byTL(r2):{};
+  const days=daysInMonth(m1);
+  const tlS=Object.keys(bt1).filter(t=>TL_MAP[t]).sort((a,b)=>(bt1[b]?.rev||0)-(bt1[a]?.rev||0));
+  const mtdTag=mtd&&m2?`<span class="pill neu" style="font-size:9px;margin-left:4px">MTD ${elapsed}d</span>`:'';
+
+  const cards=tlS.map(tl=>{
+    const info=TL_MAP[tl];
+    const d1=bt1[tl]||{rev:0,lic:0,dlic:0,dates:{}};
+    const d2=bt2[tl]||null;
+    const rev1=d1.rev,rev2=d2?.rev;
+    const ach=info.tgt>0?rev1/info.tgt*100:0;
+    const chg=rev2&&rev2>0?(rev1-rev2)/rev2*100:null;
+    const el2=Object.keys(d1.dates||{}).length;
+    const avgD=el2>0?rev1/el2:0;
+    const dLeft=days-el2;
+    const needed=dLeft>0?Math.max(0,info.tgt-rev1)/dLeft:0;
+    const hc=CLR_MGR[info.manager]||'#334155';
+    const tlId=tl.replace(/[@.]/g,'_');
+    const sparkDates=Object.keys(d1.dates||{}).sort().slice(-10);
+
+    return `<div class="tl-card">
+      <div class="tl-hdr" style="background:${hc}">
+        <div><div class="tl-name">${info.name}</div><div class="tl-mgr">↑ ${info.manager}</div></div>
+        <div class="tl-ach">${ach.toFixed(0)}%</div>
+      </div>
+      <div class="tl-body">
+        <div class="tl-stats">
+          <div class="tl-stat"><div class="sl">Revenue</div><div class="sv">${fmtRev(rev1)}</div>
+            <div class="ss">${chg!==null?`<span style="color:${chgClr(chg)};font-weight:600">${fmtPct(chg)}</span> vs ${fmtMonth(m2)}${mtd?' MTD':''}`:''}</div></div>
+          <div class="tl-stat"><div class="sl">Target</div><div class="sv">${fmtRev(info.tgt)}</div>
+            <div class="ss">Gap: ${fmtRev(Math.max(0,info.tgt-rev1))}</div></div>
+          <div class="tl-stat"><div class="sl">Avg/Day</div><div class="sv">${fmtRev(avgD,0)}</div>
+            <div class="ss">Need ${fmtRev(needed,0)}/d</div></div>
+        </div>
+        <div class="pbar-bg"><div class="pbar-fill" style="width:${Math.min(ach,100)}%;background:${pctClr(ach)}"></div></div>
+        <table class="mini-tbl">
+          <tr><td>Licenses</td><td>${d1.lic}</td></tr>
+          <tr><td>Desktop</td><td>${d1.dlic}</td></tr>
+          ${rev2!=null?`<tr><td>${fmtMonth(m2)}${mtd?' MTD':''}</td><td>${fmtRev(rev2)}</td></tr>`:''}
+        </table>
+      </div>
+      <div class="spark-wrap"><canvas id="sp_${tlId}"></canvas></div>
+    </div>`;
+  }).join('');
+
+  const mgrNote=mgr==='Amarjit'?' · Amarjit · All IPT':mgr!=='ALL'?` · ${mgr}'s team`:'';
+  document.getElementById('tl-content').innerHTML=`
+    <div class="sec-head"><span class="sec-title">TL Performance — ${fmtMonth(m1)}${mgrNote}</span>
+      ${m2?`<span class="sec-sub">vs ${fmtMonth(m2)}${mtdTag}</span>`:''}<div class="sec-line"></div></div>
+    <div class="tl-grid">${cards}</div>`;
+
+  // Sparklines — tooltips now enabled via mkSpark
+  tlS.filter(t=>TL_MAP[t]).forEach(tl=>{
+    const info=TL_MAP[tl],d1=bt1[tl]||{};
+    const hc=CLR_MGR[info.manager]||'#334155';
+    const tlId=tl.replace(/[@.]/g,'_');
+    const dates=Object.keys(d1.dates||{}).sort().slice(-10);
+    mkSpark('sp_'+tlId, dates.map(d=>d.slice(8)), dates.map(d=>d1.dates[d]||0), hc);
+  });
+}
+
+// ═══════════════ MANAGER WISE ═══════════════
+function renderMgr(m1,m2,mtd,elapsed){
+  const mgr=document.getElementById('selMgr').value;
+  const showSingleMgr = mgr==='Anuja'||mgr==='Shubham'||mgr==='Syed';
+  const r1all=getRows(m1,mgr==='Amarjit'?'Amarjit':'ALL');
+  let r2all=m2?getRows(m2,mgr==='Amarjit'?'Amarjit':'ALL'):null;
+  if(m2&&mtd){
+    const allM2=allData.filter(r=>r.month===m2);
+    const dates2=[...new Set(allM2.map(r=>r.date))].sort().slice(0,elapsed);
+    const allowed=new Set(dates2);
+    r2all=r2all?r2all.filter(r=>allowed.has(r.date)):null;
+  }
+  const rev1all=r1all.reduce((s,r)=>s+r.rev,0);
+  const rev2all=r2all?r2all.reduce((s,r)=>s+r.rev,0):null;
+  const srTgt=SRMGR_TGT.Amarjit||0;
+  const srAch=srTgt>0?rev1all/srTgt*100:0;
+  const srChg=rev2all!=null&&rev2all>0?(rev1all-rev2all)/rev2all*100:null;
+  const mtdTag=mtd&&m2?` <span class="pill neu">MTD ${elapsed}d</span>`:'';
+
+  // If a single manager is selected, show only their card + TL breakdown
+  if(showSingleMgr){
+    const tls=Object.entries(TL_MAP).filter(([,v])=>v.manager===mgr).map(([k])=>k);
+    const mr1=r1all.filter(r=>tls.includes(r.tl));
+    const mr2=r2all?r2all.filter(r=>tls.includes(r.tl)):null;
+    const rev1=mr1.reduce((s,r)=>s+r.rev,0);
+    const rev2=mr2?mr2.reduce((s,r)=>s+r.rev,0):null;
+    const tgt=MGR_TGT[mgr]||0, ach=tgt>0?rev1/tgt*100:0;
+    const chg=rev2!=null&&rev2>0?(rev1-rev2)/rev2*100:null;
+    const bt=byTL(mr1);
+    const tlList=Object.entries(bt).filter(([k])=>TL_MAP[k]).sort((a,b)=>b[1].rev-a[1].rev);
+    const tlRows=tlList.map(([k,v])=>{
+      const inf=TL_MAP[k],a=inf.tgt>0?v.rev/inf.tgt*100:0;
+      return `<div class="tl-row">
+        <div class="tl-row-name">${inf.name}</div>
+        <div class="tl-row-bar"><div class="tl-row-fill" style="width:${Math.min(a,100)}%;background:${pctClr(a)}"></div></div>
+        <div class="tl-row-val">${fmtRev(v.rev,0)} <span class="pill ${a>=100?'up':a>=80?'neu':'dn'}">${a.toFixed(0)}%</span></div>
+      </div>`;
+    }).join('');
+    document.getElementById('mgr-content').innerHTML=`
+      <div class="sec-head"><span class="sec-title">Manager — ${mgr}</span>
+        <span class="sec-sub">${fmtMonth(m1)}${m2?' vs '+fmtMonth(m2):''}${mtdTag}</span><div class="sec-line"></div></div>
+      <div class="mg g4">
+        <div class="mc navy"><div class="ml">Revenue</div><div class="mv sm">${fmtRev(rev1)}</div>
+          <div class="ms">${chg!==null?`<span class="${chg>=0?'up':'dn'}">${fmtPct(chg)} vs ${fmtMonth(m2)}${mtd?' MTD':''}</span>`:''}</div></div>
+        <div class="mc ${ach>=100?'green':ach>=80?'gold':'red'}"><div class="ml">Achievement</div><div class="mv">${ach.toFixed(1)}%</div><div class="ms">of ${fmtRev(tgt)}</div></div>
+        <div class="mc gold"><div class="ml">Gap to Target</div><div class="mv sm">${fmtRev(Math.max(0,tgt-rev1))}</div></div>
+        <div class="mc"><div class="ml">Licenses</div><div class="mv">${mr1.reduce((s,r)=>s+r.lic,0).toLocaleString()}</div></div>
+      </div>
+      <div class="sec-head"><span class="sec-title">TL Breakdown</span><div class="sec-line"></div></div>
+      <div style="max-width:600px">${tlRows}</div>`;
+    return;
+  }
+
+  const mgrs=mgr==='Amarjit'?['Shubham','Syed']:['Anuja','Shubham','Syed'];
+  const mgrCards=mgrs.map(mg=>{
+    const tls=Object.entries(TL_MAP).filter(([,v])=>v.manager===mg).map(([k])=>k);
+    const mr1=r1all.filter(r=>tls.includes(r.tl));
+    const mr2=r2all?r2all.filter(r=>tls.includes(r.tl)):null;
+    const rev1=mr1.reduce((s,r)=>s+r.rev,0);
+    const rev2=mr2?mr2.reduce((s,r)=>s+r.rev,0):null;
+    const tgt=MGR_TGT[mg]||0,ach=tgt>0?rev1/tgt*100:0;
+    const chg=rev2!=null&&rev2>0?(rev1-rev2)/rev2*100:null;
+    const lic=mr1.reduce((s,r)=>s+r.lic,0);
+    const bt=byTL(mr1);
+    const tlList=Object.entries(bt).filter(([k])=>TL_MAP[k]).sort((a,b)=>b[1].rev-a[1].rev);
+    const tlRows=tlList.map(([k,v])=>{
+      const inf=TL_MAP[k],a=inf.tgt>0?v.rev/inf.tgt*100:0;
+      return `<div class="tl-row">
+        <div class="tl-row-name">${inf.name}</div>
+        <div class="tl-row-bar"><div class="tl-row-fill" style="width:${Math.min(a,100)}%;background:${pctClr(a)}"></div></div>
+        <div class="tl-row-val">${fmtRev(v.rev,0)} <span class="pill ${a>=100?'up':a>=80?'neu':'dn'}">${a.toFixed(0)}%</span></div>
+      </div>`;
+    }).join('');
+    return `<div class="mgr-card">
+      <div class="mgr-hdr" style="background:${MGR_CLR[mg]}"><div class="mgr-name">${mg}</div><div class="mgr-role">Manager · IPT</div></div>
+      <div class="mgr-body">
+        <div class="mgr-mets">
+          <div><div class="mgr-ml">Revenue</div><div class="mgr-mv">${fmtRev(rev1)}</div>
+            <div class="mgr-ms">${chg!==null?`<span style="color:${chgClr(chg)};font-weight:600">${fmtPct(chg)}</span> vs ${fmtMonth(m2)}${mtd?' MTD':''}`:''}</div></div>
+          <div><div class="mgr-ml">Achievement</div><div class="mgr-mv" style="color:${pctClr(ach)}">${ach.toFixed(1)}%</div><div class="mgr-ms">of ${fmtRev(tgt)}</div></div>
+          <div><div class="mgr-ml">Licenses</div><div class="mgr-mv">${lic.toLocaleString()}</div></div>
+          <div><div class="mgr-ml">Active TLs</div><div class="mgr-mv">${tlList.length}</div></div>
+        </div>
+        <div class="pbar-bg" style="height:7px;margin-bottom:10px">
+          <div class="pbar-fill" style="width:${Math.min(ach,100)}%;background:${pctClr(ach)}"></div>
+        </div>${tlRows}
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('mgr-content').innerHTML=`
+    <div class="sec-head"><span class="sec-title">${mgr==='Amarjit'?'Amarjit (Sr. Mgr)':'IPT Overall'}</span>
+      <span class="sec-sub">${mgr==='Amarjit'?'Shubham + Syed':'All 3 Managers'} · ${fmtMonth(m1)}${m2?' vs '+fmtMonth(m2):''}${mtdTag}</span><div class="sec-line"></div></div>
+    <div class="mg g4">
+      <div class="mc navy"><div class="ml">Total Revenue</div><div class="mv sm">${fmtRev(rev1all)}</div>
+        <div class="ms">${srChg!==null?`<span class="${srChg>=0?'up':'dn'}">${fmtPct(srChg)} vs ${fmtMonth(m2)}${mtd?' MTD':''}</span>`:''}</div></div>
+      <div class="mc ${srAch>=100?'green':srAch>=80?'gold':'red'}"><div class="ml">${mgr==='Amarjit'?'Amarjit Team Ach':'Team Achievement'}</div><div class="mv">${srAch.toFixed(1)}%</div><div class="ms">of ${fmtRev(mgr==='Amarjit'?SRMGR_TGT.Amarjit:srTgt)}</div></div>
+      <div class="mc gold"><div class="ml">Gap to Target</div><div class="mv sm">${fmtRev(Math.max(0,srTgt-rev1all))}</div>
+        <div class="ms">${rev2all!=null?`Prev: ${fmtRev(rev2all)}`:''}</div></div>
+      <div class="mc"><div class="ml">Total Licenses</div><div class="mv">${r1all.reduce((s,r)=>s+r.lic,0).toLocaleString()}</div>
+        <div class="ms">Desktop: ${r1all.reduce((s,r)=>s+r.dlic,0).toLocaleString()}</div></div>
+    </div>
+    <div class="sec-head"><span class="sec-title">Manager Breakdown</span><div class="sec-line"></div></div>
+    <div class="mgr-grid">${mgrCards}</div>`;
+}
+
+// ═══════════════ COMPARE ═══════════════
+function renderCmp(m1,m2,mgr,mtd,elapsed){
+  if(!m2){
+    document.getElementById('cmp-content').innerHTML=`<div class="placeholder"><h3>Select a comparison month</h3><p>Use the "Compare With" dropdown.</p></div>`;
+    return;
+  }
+  const [r1,r2]=getPair(m1,m2,mgr);
+  const bt1=byTL(r1),bt2=byTL(r2||[]);
+  const allTLs=[...new Set([...Object.keys(bt1),...Object.keys(bt2)])].filter(t=>TL_MAP[t]);
+  const tlS=allTLs.sort((a,b)=>(bt1[b]?.rev||0)-(bt1[a]?.rev||0));
+  const maxRev=Math.max(...tlS.map(t=>Math.max(bt1[t]?.rev||0,bt2[t]?.rev||0)),1);
+  const rev1=r1.reduce((s,r)=>s+r.rev,0),rev2=(r2||[]).reduce((s,r)=>s+r.rev,0);
+  const totChg=rev2>0?(rev1-rev2)/rev2*100:0;
+  const bd1=byDate(r1),bd2=byDate(r2||[]);
+  const d1=Object.keys(bd1).sort(),d2=Object.keys(bd2).sort();
+  const maxD=Math.max(d1.length,d2.length);
+  const mtdNote=mtd?` (MTD — first ${elapsed} days)`:'' ;
+
+  const cmpRows=tlS.map(tl=>{
+    const info=TL_MAP[tl],rv1=bt1[tl]?.rev||0,rv2=bt2[tl]?.rev||0;
+    const chg=rv2>0?(rv1-rv2)/rv2*100:null;
+    const p1=rv1/maxRev*100,p2=rv2/maxRev*100;
+    return `<div class="cmp-row">
+      <div class="cmp-name">${info.name}<div style="font-size:9px;color:var(--muted)">${info.manager}</div></div>
+      <div class="cmp-bar">
+        <div class="cmp-bar-m" style="width:${p2}%;background:var(--gold)"></div>
+        <div class="cmp-bar-c" style="width:${p1}%;background:var(--teal);opacity:0.85"></div>
+      </div>
+      <div class="cmp-vals"><div>${fmtRev(rv1,1)}</div><div style="color:var(--muted)">${fmtRev(rv2,1)}</div></div>
+      <div style="width:55px;text-align:right">${mkPill(chg)}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('cmp-content').innerHTML=`
+    <div class="sec-head"><span class="sec-title">Comparison — ${fmtMonth(m1)} vs ${fmtMonth(m2)}${mtdNote}</span><div class="sec-line"></div></div>
+    <div class="mg g4">
+      <div class="mc navy"><div class="ml">${fmtMonth(m1)} Revenue</div><div class="mv sm">${fmtRev(rev1)}</div></div>
+      <div class="mc gold"><div class="ml">${fmtMonth(m2)} Revenue${mtd?' MTD':''}</div><div class="mv sm">${fmtRev(rev2)}</div></div>
+      <div class="mc ${totChg>=0?'green':'red'}"><div class="ml">Change</div><div class="mv">${fmtPct(totChg)}</div><div class="ms">${fmtRev(rev1-rev2)} absolute</div></div>
+      <div class="mc"><div class="ml">TL Count</div><div class="mv">${Object.keys(bt1).filter(t=>TL_MAP[t]).length} vs ${Object.keys(bt2).filter(t=>TL_MAP[t]).length}</div></div>
+    </div>
+    <div class="cg cg2">
+      <div class="cc"><div class="ct">Daily Pattern — ${fmtMonth(m1)} vs ${fmtMonth(m2)}${mtd?' (MTD)':''}<span class="cb">Day-by-day</span></div>
+        <div style="height:200px"><canvas id="ch-cmp-d"></canvas></div></div>
+      <div class="cc"><div class="ct">TL Comparison<span class="cb">${fmtMonth(m1)} vs ${fmtMonth(m2)}</span></div>
+        <div style="height:200px"><canvas id="ch-cmp-tl"></canvas></div></div>
+    </div>
+    <div class="cc" style="margin-bottom:16px">
+      <div class="ct">TL Detail <span class="cb">Teal = ${fmtMonth(m1)} · Gold = ${fmtMonth(m2)}${mtd?' MTD':''}</span></div>
+      ${cmpRows}
+    </div>`;
+
+  mkChart('ch-cmp-d','line',{
+    labels:Array.from({length:maxD},(_,i)=>`D${i+1}`),
+    datasets:[
+      {label:fmtMonth(m1),data:d1.map(d=>bd1[d]||0),borderColor:'#0891B2',backgroundColor:'rgba(8,145,178,0.07)',fill:true,tension:0.3,pointRadius:3,borderWidth:2},
+      {label:fmtMonth(m2)+(mtd?' MTD':''),data:d2.map(d=>bd2[d]||0),borderColor:'#D97706',backgroundColor:'rgba(217,119,6,0.07)',fill:true,tension:0.3,pointRadius:3,borderWidth:2,borderDash:[4,3]},
+    ]
+  });
+
+  const tlTop=tlS.filter(t=>TL_MAP[t]).slice(0,12);
+  mkChart('ch-cmp-tl','bar',{
+    labels:tlTop.map(t=>TL_MAP[t].name),
+    datasets:[
+      {label:fmtMonth(m1),data:tlTop.map(t=>bt1[t]?.rev||0),backgroundColor:'rgba(8,145,178,0.8)',borderRadius:3},
+      {label:fmtMonth(m2)+(mtd?' MTD':''),data:tlTop.map(t=>bt2[t]?.rev||0),backgroundColor:'rgba(217,119,6,0.7)',borderRadius:3},
+    ]
+  },{scales:{x:{grid:{display:false},ticks:{font:{family:'Inter',size:9},color:'#334155'}},y:{grid:{color:'rgba(226,232,240,0.7)'},ticks:{callback:v=>fmtRev(v,0),font:{family:'JetBrains Mono',size:9}}}}});
+}
+
+// ═══════════════════════════════════════════════════════
+// DAY OF WEEK ANALYSIS
+// ═══════════════════════════════════════════════════════
+function renderDOW(m1,m2,mgr,mtd,elapsed){
+  const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const SHORT=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const DCLR=['#7C3AED','#0891B2','#059669','#D97706','#2563EB','#DC2626','#BE185D'];
+
+  // Sale/Non-Sale DRR helpers
+  function getSaleDayStats(rows, dow){
+    // dow: the sale day name (highest avg rev day)
+    const saleDates=[...new Set(rows.filter(r=>DAYS[parseDateLocal(r.date).getDay()]===dow).map(r=>r.date))].sort();
+    const nonSaleDates=[...new Set(rows.filter(r=>DAYS[parseDateLocal(r.date).getDay()]!==dow).map(r=>r.date))].sort();
+    const saleRev=rows.filter(r=>DAYS[parseDateLocal(r.date).getDay()]===dow).reduce((s,r)=>s+r.rev,0);
+    const nonSaleRev=rows.filter(r=>DAYS[parseDateLocal(r.date).getDay()]!==dow).reduce((s,r)=>s+r.rev,0);
+    return {
+      saleDow: dow,
+      saleCount: saleDates.length,
+      saleRev,
+      saleAvg: saleDates.length>0 ? saleRev/saleDates.length : 0,
+      nonSaleCount: nonSaleDates.length,
+      nonSaleRev,
+      nonSaleAvg: nonSaleDates.length>0 ? nonSaleRev/nonSaleDates.length : 0,
+      totalRev: saleRev+nonSaleRev,
+      saleShare: (saleRev+nonSaleRev)>0 ? saleRev/(saleRev+nonSaleRev)*100 : 0
+    };
+  }
+
+  // All-months sale/non-sale comparison
+  function getAllMonthsSaleData(mgrFilter){
+    const months=getMonths();
+    return months.map(mo=>{
+      const rows=allData.filter(r=>r.month===mo&&(!mgrFilter||mgrFilter==='all'||mgrFilter==='ALL'
+        ||(mgrFilter==='Amarjit'&&TL_MAP[r.tl]&&(TL_MAP[r.tl].manager==='Shubham'||TL_MAP[r.tl].manager==='Syed'))
+        ||(mgrFilter!=='Amarjit'&&TL_MAP[r.tl]&&TL_MAP[r.tl].manager===mgrFilter)));
+      if(!rows.length) return null;
+      const dowMap={};
+      DAYS.forEach(d=>{dowMap[d]={rev:0,dates:[]};});
+      for(const r of rows){
+        const d=DAYS[parseDateLocal(r.date).getDay()];
+        dowMap[d].rev+=r.rev;
+        dowMap[d].dates.push(r.date);
+      }
+      DAYS.forEach(d=>{
+        const u=[...new Set(dowMap[d].dates)];
+        dowMap[d].count=u.length;
+        dowMap[d].avgRev=u.length>0?dowMap[d].rev/u.length:0;
+      });
+      const saleDay=DAYS.slice().sort((a,b)=>dowMap[b].avgRev-dowMap[a].avgRev)[0];
+      const s=getSaleDayStats(rows, saleDay);
+      return {month:mo, saleDay, ...s};
+    }).filter(Boolean);
+  }
+
+  function getDoW(rows){
+    const out={};
+    DAYS.forEach(d=>out[d]={rev:0,lic:0,count:0,dates:[]});
+    for(const r of rows){
+      const dt=parseDateLocal(r.date);
+      const day=DAYS[dt.getDay()];
+      out[day].rev+=r.rev;
+      out[day].lic+=r.lic;
+      out[day].dates.push(r.date);
+    }
+    // average per occurrence of that weekday
+    DAYS.forEach(d=>{
+      const uniqDates=[...new Set(out[d].dates)];
+      out[d].count=uniqDates.length;
+      out[d].avgRev=out[d].count>0?out[d].rev/out[d].count:0;
+      out[d].avgLic=out[d].count>0?out[d].lic/out[d].count:0;
+    });
+    return out;
+  }
+
+  const [r1,r2]=getPair(m1,m2,mgr);
+  if(!r1.length){ document.getElementById('dow-content').innerHTML='<div class="placeholder"><h3>Day of Week Analysis</h3><p>Upload data to begin.</p></div>'; return; }
+
+  const dow1=getDoW(r1);
+  const dow2=r2?getDoW(r2):null;
+  const tgt=totalTgt(mgr);
+  const days=daysInMonth(m1);
+  const dailyTgt=tgt/days;
+
+  // Best/Worst day
+  const sorted=DAYS.slice().sort((a,b)=>dow1[b].avgRev-dow1[a].avgRev);
+  const bestDay=sorted[0],worstDay=sorted[sorted.length-1];
+  const totalRev=r1.reduce((s,r)=>s+r.rev,0);
+
+  // Per-TL DoW breakdown
+  function getTLDoW(rows){
+    const out={};
+    for(const r of rows){
+      if(!TL_MAP[r.tl]) continue;
+      const day=DAYS[parseDateLocal(r.date).getDay()];
+      if(!out[r.tl]) out[r.tl]={};
+      if(!out[r.tl][day]) out[r.tl][day]={rev:0,dates:[]};
+      out[r.tl][day].rev+=r.rev;
+      out[r.tl][day].dates.push(r.date);
+    }
+    // Compute averages
+    for(const tl of Object.keys(out)){
+      for(const day of DAYS){
+        if(!out[tl][day]) out[tl][day]={rev:0,dates:[],count:0,avgRev:0};
+        const uniq=[...new Set(out[tl][day].dates)];
+        out[tl][day].count=uniq.length;
+        out[tl][day].avgRev=uniq.length>0?out[tl][day].rev/uniq.length:0;
+      }
+    }
+    return out;
+  }
+  const tlDow=getTLDoW(r1);
+  const bt1=byTL(r1);
+  const tlS=Object.keys(bt1).filter(t=>TL_MAP[t]).sort((a,b)=>(bt1[b]?.rev||0)-(bt1[a]?.rev||0));
+
+  const mtdTag=mtd&&m2?` <span class="pill neu">MTD ${elapsed}d</span>`:'';
+  const cmpLabel=m2?` vs ${fmtMonth(m2)}${mtdTag}`:'';
+
+  // Build TL DoW table rows
+  const tlDowRows=tlS.map(tl=>{
+    const info=TL_MAP[tl];
+    const cells=DAYS.map(d=>{
+      const v=tlDow[tl]?.[d]?.avgRev||0;
+      const pct=dailyTgt>0?Math.min(v/dailyTgt*100,150):0;
+      const clr=pct>=100?'var(--green)':pct>=70?'var(--gold)':'var(--red)';
+      return v>0?`<td style="color:${clr};font-weight:600">${fmtRev(v,0)}</td>`:`<td class="c-na">—</td>`;
+    }).join('');
+    return `<tr><td><strong>${info.name}</strong><br><span style="font-size:9px;color:var(--muted)">${info.manager}</span></td>${cells}</tr>`;
+  }).join('');
+
+  const totCells=DAYS.map(d=>{
+    const v=dow1[d].avgRev;
+    const pct=dailyTgt>0?v/dailyTgt*100:0;
+    const clr=pct>=100?'var(--green)':pct>=70?'var(--gold)':'var(--red)';
+    return `<td style="color:${clr};font-weight:700">${fmtRev(v,0)}</td>`;
+  }).join('');
+
+  // Sale day stats for m1 and m2
+  const sd1=getSaleDayStats(r1, bestDay);
+  let sd2=null;
+  if(r2&&dow2){
+    const bestDay2=DAYS.slice().sort((a,b)=>dow2[b].avgRev-dow2[a].avgRev)[0];
+    sd2=getSaleDayStats(r2, bestDay2);
+  }
+
+  // All-months data for trend chart
+  const allMoData=getAllMonthsSaleData(mgr);
+
+  const saleVsNonPct1=sd1.nonSaleAvg>0?((sd1.saleAvg-sd1.nonSaleAvg)/sd1.nonSaleAvg*100):0;
+  const saleVsNonPct2=sd2&&sd2.nonSaleAvg>0?((sd2.saleAvg-sd2.nonSaleAvg)/sd2.nonSaleAvg*100):null;
+
+  document.getElementById('dow-content').innerHTML=`
+  <div class="sec-head"><span class="sec-title">Day of Week Analysis — ${fmtMonth(m1)}${cmpLabel}</span><div class="sec-line"></div></div>
+
+  <div class="mg g4" style="margin-bottom:16px">
+    <div class="mc green"><div class="ml">Best Day (Avg)</div><div class="mv sm">${fmtRev(dow1[bestDay].avgRev)}</div>
+      <div class="ms">${bestDay} · ${dow1[bestDay].count} occurrence${dow1[bestDay].count!==1?'s':''}</div></div>
+    <div class="mc red"><div class="ml">Weakest Day (Avg)</div><div class="mv sm">${fmtRev(dow1[worstDay].avgRev)}</div>
+      <div class="ms">${worstDay} · ${dow1[worstDay].count} occurrence${dow1[worstDay].count!==1?'s':''}</div></div>
+    <div class="mc gold"><div class="ml">Daily Target (Avg)</div><div class="mv sm">${fmtRev(dailyTgt)}</div>
+      <div class="ms">₹${(tgt/1e5).toFixed(1)}L ÷ ${days} days</div></div>
+    <div class="mc navy"><div class="ml">Best/Worst Ratio</div><div class="mv">${dow1[worstDay].avgRev>0?(dow1[bestDay].avgRev/dow1[worstDay].avgRev).toFixed(1)+'x':'—'}</div>
+      <div class="ms">spread across week</div></div>
+  </div>
+
+  <div class="cg cg2" style="margin-bottom:16px">
+    <div class="cc"><div class="ct">Avg Revenue by Day of Week — ${fmtMonth(m1)}${m2?` vs ${fmtMonth(m2)}`:''}
+      <span class="cb">Avg per occurrence</span></div>
+      <div style="height:240px"><canvas id="ch-dow-bar"></canvas></div></div>
+    <div class="cc"><div class="ct">Revenue Distribution by Day<span class="cb">${fmtMonth(m1)}</span></div>
+      <div style="height:240px"><canvas id="ch-dow-donut"></canvas></div></div>
+  </div>
+
+  <div class="cg" style="margin-bottom:16px">
+    <div class="cc"><div class="ct">Weekly Revenue Pattern — Daily totals<span class="cb">All ${fmtMonth(m1)} dates</span></div>
+      <div style="height:200px"><canvas id="ch-dow-line"></canvas></div></div>
+  </div>
+
+  <div class="sec-head"><span class="sec-title">Sale Day vs Non-Sale Day DRR</span>
+    <span class="sec-sub">Sale day = ${bestDay} (highest avg revenue day in ${fmtMonth(m1)})${m2?` · Comparison month: ${fmtMonth(m2)}`+( sd2?` sale day = ${sd2.saleDow}`:'' ):''}</span>
+    <div class="sec-line"></div></div>
+
+  <div class="mg g4" style="margin-bottom:16px">
+    <div class="mc green">
+      <div class="ml">🟢 Sale Day DRR — ${fmtMonth(m1)}</div>
+      <div class="mv sm">${fmtRev(sd1.saleAvg)}</div>
+      <div class="ms">${bestDay} · ${sd1.saleCount} occurrences · ${sd1.saleShare.toFixed(1)}% of month rev</div>
+    </div>
+    <div class="mc navy">
+      <div class="ml">⚪ Non-Sale Day DRR — ${fmtMonth(m1)}</div>
+      <div class="mv sm">${fmtRev(sd1.nonSaleAvg)}</div>
+      <div class="ms">${sd1.nonSaleCount} days · ${(100-sd1.saleShare).toFixed(1)}% of month rev</div>
+    </div>
+    ${m2&&sd2?`
+    <div class="mc gold">
+      <div class="ml">🟢 Sale Day DRR — ${fmtMonth(m2)}${mtd?' (MTD)':''}</div>
+      <div class="mv sm">${fmtRev(sd2.saleAvg)}</div>
+      <div class="ms">${sd2.saleDow} · ${sd2.saleCount} occ · ${sd2.saleShare.toFixed(1)}% of month rev</div>
+    </div>
+    <div class="mc red">
+      <div class="ml">⚪ Non-Sale Day DRR — ${fmtMonth(m2)}${mtd?' (MTD)':''}</div>
+      <div class="mv sm">${fmtRev(sd2.nonSaleAvg)}</div>
+      <div class="ms">${sd2.nonSaleCount} days · ${(100-sd2.saleShare).toFixed(1)}% of month rev</div>
+    </div>`:`
+    <div class="mc teal">
+      <div class="ml">📈 Sale Day Premium</div>
+      <div class="mv">${saleVsNonPct1>=0?'+':''}${saleVsNonPct1.toFixed(1)}%</div>
+      <div class="ms">sale day avg vs non-sale avg</div>
+    </div>
+    <div class="mc">
+      <div class="ml">📊 Sale Day Rev Share</div>
+      <div class="mv">${sd1.saleShare.toFixed(1)}%</div>
+      <div class="ms">of total ${fmtMonth(m1)} revenue</div>
+    </div>`}
+  </div>
+
+  <div class="cg cg2" style="margin-bottom:16px">
+    <div class="cc"><div class="ct">Sale Day vs Non-Sale Day DRR<span class="cb">${fmtMonth(m1)}${m2?` vs ${fmtMonth(m2)}`+( mtd?' MTD':'' ):''}</span></div>
+      <div style="height:220px"><canvas id="ch-sale-bar"></canvas></div></div>
+    <div class="cc"><div class="ct">Sale/Non-Sale DRR Trend — All Months<span class="cb">Per-occurrence avg revenue</span></div>
+      <div style="height:220px"><canvas id="ch-sale-trend"></canvas></div></div>
+  </div>
+
+  <div class="sec-head"><span class="sec-title">TL-wise Day of Week Breakdown</span>
+    <span class="sec-sub">Avg revenue per occurrence of each weekday</span><div class="sec-line"></div></div>
+  <div class="drr-wrap"><table class="drr-tbl">
+    <thead><tr><th>TL</th>${DAYS.map((d,i)=>`<th${d===bestDay?' style="background:rgba(5,150,105,0.08);font-weight:700"':''}>${SHORT[i]}${d===bestDay?' 🟢':''}</th>`).join('')}</tr></thead>
+    <tbody>${tlDowRows}
+      <tr class="tr-total"><td>TOTAL AVG</td>${totCells}</tr>
+    </tbody>
+  </table></div>`;
+
+  // Bar chart — avg rev by DoW
+  const ds1={label:fmtMonth(m1),data:DAYS.map(d=>Math.round(dow1[d].avgRev)),backgroundColor:DAYS.map((_,i)=>DCLR[i]+'CC'),borderColor:DAYS.map((_,i)=>DCLR[i]),borderWidth:1.5,borderRadius:4};
+  const barDs=[ds1];
+  if(dow2){
+    barDs.push({label:fmtMonth(m2)+(mtd?' MTD':''),data:DAYS.map(d=>Math.round(dow2[d].avgRev)),backgroundColor:DAYS.map((_,i)=>DCLR[i]+'55'),borderColor:DAYS.map((_,i)=>DCLR[i]),borderWidth:1.5,borderRadius:4,borderDash:[4,2]});
+  }
+  // Add daily target line
+  const tgtLineDs={label:'Daily Tgt',data:DAYS.map(()=>Math.round(dailyTgt)),type:'line',borderColor:'#DC2626',borderDash:[5,3],pointRadius:0,borderWidth:1.5,backgroundColor:'transparent',order:0};
+  barDs.push(tgtLineDs);
+  mkChart('ch-dow-bar','bar',{labels:SHORT,datasets:barDs},{scales:{x:{grid:{display:false},ticks:{font:{family:'Inter',size:10},color:'#334155'}},y:{grid:{color:'rgba(226,232,240,0.7)'},ticks:{callback:v=>fmtRev(v,0),font:{family:'JetBrains Mono',size:9}}}}});
+
+  // Donut — total rev by DoW
+  const donutEl=document.getElementById('ch-dow-donut');
+  if(donutEl){
+    if(CHARTS['ch-dow-donut']){CHARTS['ch-dow-donut'].destroy();delete CHARTS['ch-dow-donut'];}
+    CHARTS['ch-dow-donut']=new Chart(donutEl,{type:'doughnut',
+      data:{labels:DAYS,datasets:[{data:DAYS.map(d=>Math.round(dow1[d].rev)),backgroundColor:DCLR,borderWidth:2,borderColor:'#fff'}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'right',labels:{font:{family:'Inter',size:10},boxWidth:10,padding:7}},
+        tooltip:Object.assign({},TOOLTIP_CFG,{callbacks:{label:ctx=>`${ctx.label}: ${fmtRev(ctx.parsed)} (${totalRev>0?(ctx.parsed/totalRev*100).toFixed(1):'0'}%)`}}),scales:{}}}}); }
+
+  // Line chart — day-by-day pattern
+  const allDates=[...new Set(r1.map(r=>r.date))].sort();
+  const bd1=byDate(r1);
+  const lineClr=allDates.map(dt=>DCLR[parseDateLocal(dt).getDay()]);
+  const lineEl=document.getElementById('ch-dow-line');
+  if(lineEl){
+    if(CHARTS['ch-dow-line']){CHARTS['ch-dow-line'].destroy();delete CHARTS['ch-dow-line'];}
+    CHARTS['ch-dow-line']=new Chart(lineEl,{type:'bar',
+      data:{labels:allDates.map(dt=>{const d=parseDateLocal(dt);return SHORT[d.getDay()]+' '+dt.slice(8);}),
+        datasets:[{data:allDates.map(dt=>Math.round(bd1[dt]||0)),backgroundColor:lineClr,borderRadius:3,borderWidth:0},
+          {type:'line',label:'Daily Tgt',data:allDates.map(()=>Math.round(dailyTgt)),borderColor:'#DC2626',borderDash:[4,3],pointRadius:0,borderWidth:1.5,backgroundColor:'transparent'}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{legend:{display:true,labels:{font:{family:'Inter',size:10},boxWidth:10,padding:10,filter:i=>i.text==='Daily Tgt'}},
+          tooltip:{enabled:true,backgroundColor:'rgba(11,31,58,0.93)',titleColor:'#06B6D4',bodyColor:'#e2e8f0',padding:8,
+            titleFont:{family:'Inter',size:10,weight:'600'},bodyFont:{family:'JetBrains Mono',size:10},
+            callbacks:{title:items=>{const dt=allDates[items[0].dataIndex];const d=parseDateLocal(dt);return DAYS[d.getDay()]+' '+dt;},
+              label:ctx=>ctx.dataset.type==='line'?` Target: ${fmtRev(ctx.parsed.y)}`:(` Revenue: ${fmtRev(ctx.parsed.y)}`)}}},
+        scales:{x:{grid:{display:false},ticks:{color:'#94A3B8',font:{family:'JetBrains Mono',size:8},maxRotation:45}},
+          y:{grid:{color:'rgba(226,232,240,0.7)'},ticks:{callback:v=>fmtRev(v,0),font:{family:'JetBrains Mono',size:9}}}}}}); }
+
+  // Sale Day vs Non-Sale Day bar chart
+  const saleBarEl=document.getElementById('ch-sale-bar');
+  if(saleBarEl){
+    if(CHARTS['ch-sale-bar']){CHARTS['ch-sale-bar'].destroy();delete CHARTS['ch-sale-bar'];}
+    const saleLabels=m2?[fmtMonth(m1)+(mtd?'':' Sale'), fmtMonth(m1)+(mtd?'':' Non'), fmtMonth(m2)+(mtd?' MTD':'')+' Sale', fmtMonth(m2)+(mtd?' MTD':'')+' Non']:['Sale Day','Non-Sale Day'];
+    const saleData=m2&&sd2?[Math.round(sd1.saleAvg),Math.round(sd1.nonSaleAvg),Math.round(sd2.saleAvg),Math.round(sd2.nonSaleAvg)]:[Math.round(sd1.saleAvg),Math.round(sd1.nonSaleAvg)];
+    const saleBgColors=m2&&sd2?['#059669CC','#64748BCC','#D97706CC','#94A3B8CC']:['#059669CC','#64748BCC'];
+    const saleBorderColors=m2&&sd2?['#059669','#64748B','#D97706','#94A3B8']:['#059669','#64748B'];
+    CHARTS['ch-sale-bar']=new Chart(saleBarEl,{type:'bar',
+      data:{labels:saleLabels, datasets:[{data:saleData,backgroundColor:saleBgColors,borderColor:saleBorderColors,borderWidth:1.5,borderRadius:5}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},
+          tooltip:Object.assign({},TOOLTIP_CFG,{callbacks:{label:ctx=>' DRR: '+fmtRev(ctx.parsed.y)}})},
+        scales:{x:{grid:{display:false},ticks:{font:{family:'Inter',size:10},color:'#334155'}},
+          y:{grid:{color:'rgba(226,232,240,0.7)'},ticks:{callback:v=>fmtRev(v,0),font:{family:'JetBrains Mono',size:9}}}}}}); }
+
+  // Sale/Non-Sale trend across all months
+  const trendEl=document.getElementById('ch-sale-trend');
+  if(trendEl&&allMoData.length>0){
+    if(CHARTS['ch-sale-trend']){CHARTS['ch-sale-trend'].destroy();delete CHARTS['ch-sale-trend'];}
+    CHARTS['ch-sale-trend']=new Chart(trendEl,{type:'line',
+      data:{labels:allMoData.map(d=>fmtMonth(d.month)),
+        datasets:[
+          {label:'Sale Day DRR',data:allMoData.map(d=>Math.round(d.saleAvg)),borderColor:'#059669',backgroundColor:'rgba(5,150,105,0.12)',borderWidth:2,pointRadius:4,pointBackgroundColor:'#059669',tension:0.3,fill:false},
+          {label:'Non-Sale DRR',data:allMoData.map(d=>Math.round(d.nonSaleAvg)),borderColor:'#64748B',backgroundColor:'rgba(100,116,139,0.08)',borderWidth:2,pointRadius:4,pointBackgroundColor:'#64748B',tension:0.3,fill:false,borderDash:[4,3]}
+        ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{legend:{display:true,labels:{font:{family:'Inter',size:10},boxWidth:10,padding:10}},
+          tooltip:Object.assign({},TOOLTIP_CFG,{callbacks:{
+            title:items=>{const d=allMoData[items[0].dataIndex];return fmtMonth(d.month)+' · Sale: '+d.saleDow;},
+            label:ctx=>` ${ctx.dataset.label}: ${fmtRev(ctx.parsed.y)}`
+          }})},
+        scales:{x:{grid:{display:false},ticks:{font:{family:'Inter',size:10},color:'#334155',maxRotation:30}},
+          y:{grid:{color:'rgba(226,232,240,0.7)'},ticks:{callback:v=>fmtRev(v,0),font:{family:'JetBrains Mono',size:9}}}}}}); }
+}
+
+// ═══════════════════════════════════════════════════════
+// GOOGLE SHEETS LIVE CONNECTION  (JSONP — works from file://)
+// ═══════════════════════════════════════════════════════
+var sheetsUrl     = '';
+var refreshTimer  = null;
+var STORAGE_KEY   = 'ipt_drr_sheets_url_v2';
+var INTERVAL_KEY  = 'ipt_drr_refresh_interval';
+
+// ── Modal controls ──
+function showSheetsModal() {
+  var saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) document.getElementById('sheetsUrls').value = saved;
+  var savedInterval = localStorage.getItem(INTERVAL_KEY);
+  if (savedInterval) document.getElementById('refreshInterval').value = savedInterval;
+  document.getElementById('sheetsModal').classList.add('show');
+}
+function closeSheetsModal() {
+  document.getElementById('sheetsModal').classList.remove('show');
+  document.getElementById('sheetsErr').style.display = 'none';
+}
+
+// ── Connect ──
+function connectSheets() {
+  var raw    = document.getElementById('sheetsUrls').value.trim();
+  var errEl  = document.getElementById('sheetsErr');
+  errEl.style.display = 'none';
+
+  if (!raw) {
+    errEl.textContent = 'Please paste your Apps Script URL.';
+    errEl.style.display = 'block'; return;
+  }
+
+  var url = raw.split('\n')[0].trim(); // take first URL only
+  if (!url.includes('script.google.com/macros')) {
+    errEl.textContent = 'Please paste the Apps Script /exec URL.\nIt should look like: https://script.google.com/macros/s/.../exec';
+    errEl.style.display = 'block'; return;
+  }
+
+  sheetsUrl = url;
+  localStorage.setItem(STORAGE_KEY, url);
+  localStorage.setItem(INTERVAL_KEY, document.getElementById('refreshInterval').value);
+
+  closeSheetsModal();
+  loadFromSheets();
+
+  if (document.getElementById('autoRefresh').checked) {
+    startAutoRefresh();
+  }
+}
+
+// ── Fetch loader with JSONP fallback ──
+function loadFromSheets() {
+  if (!sheetsUrl) return;
+  document.getElementById('statusTxt').textContent = '⟳ Loading from Google Sheets…';
+  // Try fetch first (works when served over http://)
+  fetch(sheetsUrl + '?t=' + Date.now(), {mode:'cors', redirect:'follow'})
+    .then(function(res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.text();
+    })
+    .then(function(text) {
+      var json = text.trim();
+      var match = json.match(/^[\w$]+\(([\s\S]+)\)\s*;?$/);
+      if (match) json = match[1].trim();
+      if (!json.startsWith('[')) throw new Error('Unexpected response format');
+      handleSheetData(JSON.parse(json));
+    })
+    .catch(function() {
+      // Fetch failed — try JSONP (works from file://)
+      loadFromSheetsJSONP();
+    });
+}
+
+function loadFromSheetsJSONP() {
+  var old = document.getElementById('jsonp-loader');
+  if (old) old.parentNode.removeChild(old);
+  var cbName = 'iptJSONPcb_' + Date.now();
+  var timeoutKey = '_iptTO_' + cbName;
+
+  window[cbName] = function(data) {
+    clearTimeout(window[timeoutKey]);
+    delete window[cbName]; delete window[timeoutKey];
+    var old2 = document.getElementById('jsonp-loader');
+    if (old2) old2.parentNode.removeChild(old2);
+    handleSheetData(data);
+  };
+
+  window[timeoutKey] = setTimeout(function() {
+    if (window[cbName]) {
+      delete window[cbName]; delete window[timeoutKey];
+      document.getElementById('statusTxt').textContent =
+        '⚠ No response after 10s. Re-deploy your Apps Script: Extensions → Apps Script → Deploy → New Deployment → Web app → Anyone → Deploy. Paste the new /exec URL.';
+    }
+  }, 10000);
+
+  var script = document.createElement('script');
+  script.id  = 'jsonp-loader';
+  script.src = sheetsUrl + '?callback=' + cbName + '&t=' + Date.now();
+  // Note: onerror may fire on file:// even when request succeeds — rely on timeout instead
+  script.onerror = function() {
+    // Don't show error immediately — the timeout will handle it if callback never fires
+    // This prevents false "could not reach" errors on file:// protocol
+  };
+  document.head.appendChild(script);
+}
+
+function handleSheetData(data) {
+  if (!Array.isArray(data) || data.length === 0) {
+    document.getElementById('statusTxt').textContent =
+      '⚠ No data received. Make sure your Apps Script returns data correctly.';
+    return;
+  }
+  var rows = parseJSONP(data);
+  if (rows.length === 0) {
+    document.getElementById('statusTxt').textContent =
+      '⚠ Data received but no valid rows. Sheet must have: payment_month, payment_date, team_lead, rev_ex_gst';
+    return;
+  }
+  allData = rows;
+  refreshSelects();
+  var months = getMonths();
+  var now = new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
+  document.getElementById('fileBadge').style.display = 'inline';
+  document.getElementById('fileBadge').textContent = allData.length + ' rows · ' + months.length + ' months';
+  document.getElementById('statusTxt').innerHTML =
+    '<span style="color:var(--green)">●</span> Live · ' + allData.length + ' records · ' +
+    months.length + ' months · refreshed ' + now;
+  document.getElementById('dataSource').textContent =
+    'Live from Google Sheets · last refreshed ' + now;
+  render();
+}
+
+// ── Parse JSONP data (array of row objects from Apps Script) ──
+function parseJSONP(data) {
+  var rows = [];
+  for (var i = 0; i < data.length; i++) {
+    var r = data[i];
+    var keys = Object.keys(r);
+
+    function get(names) {
+      for (var n = 0; n < names.length; n++) {
+        for (var k = 0; k < keys.length; k++) {
+          if (keys[k].toString().trim().toLowerCase() === names[n]) {
+            return r[keys[k]];
+          }
+        }
+      }
+      return '';
+    }
+
+    var month = parseMonthStr((get(['payment_month','month']) || '').toString().trim());
+    var dateStr = parseDateStr((get(['payment_date','date']) || '').toString().trim());
+    var tl      = (get(['team_lead','tl'])         || '').toString().trim().toLowerCase();
+    if (!month || !dateStr || !tl || tl === 'old partners') continue;
+
+    rows.push({
+      month: month,
+      date:  dateStr,
+      tl:    tl,
+      agent: (get(['agent_email','agent'])          || '').toString().trim(),
+      ref:   (get(['referral_code','ref'])           || '').toString().trim(),
+      lic:   parseFloat(get(['total_licenses','lic']))  || 0,
+      dlic:  parseFloat(get(['desktop_licenses','dlic'])) || 0,
+      rev:   parseFloat(get(['rev_ex_gst','rev']))   || 0,
+    });
+  }
+  return rows;
+}
+
+// ── Auto-refresh ──
+function startAutoRefresh() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  var interval = parseInt(document.getElementById('refreshInterval').value) || 300000;
+  refreshTimer = setInterval(loadFromSheets, interval);
+}
+function stopAutoRefresh() {
+  if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+}
+
+// ── On page load: restore saved URL and auto-connect ──
+(function initSheets() {
+  var saved = localStorage.getItem(STORAGE_KEY);
+  if (saved && saved.includes('script.google.com')) {
+    sheetsUrl = saved;
+    setTimeout(function() {
+      loadFromSheets();
+      var savedInterval = localStorage.getItem(INTERVAL_KEY);
+      if (savedInterval) document.getElementById('refreshInterval').value = savedInterval;
+      startAutoRefresh();
+    }, 500);
+  }
+})();
+
+</script>
+
+</body>
+</html>

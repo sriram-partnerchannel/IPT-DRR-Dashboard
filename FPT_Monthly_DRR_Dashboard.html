@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FPT Monthly DRR Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brown:#4A1E00;--brown2:#6B2D00;--brown3:#8B3A00;
+  --amber:#D97706;--amber2:#F59E0B;--amber-lt:#FEF3C7;
+  --orange:#EA580C;--orange-lt:#FEE8D6;
+  --green:#059669;--green-lt:#D1FAE5;
+  --red:#DC2626;--red-lt:#FEE2E2;
+  --purple:#7C3AED;--purple-lt:#EDE9FE;
+  --slate:#334155;--muted:#64748B;--border:#E2E8F0;--bg:#FFF8F0;--card:#FFFFFF
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--slate);font-size:13px;min-height:100vh}
+.topbar{background:var(--brown);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;border-bottom:3px solid var(--amber)}
+.brand{font-size:15px;font-weight:700;color:#fff}.brand span{color:var(--amber2);font-size:10px;font-weight:400;margin-left:8px;letter-spacing:0.5px;text-transform:uppercase}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.upload-zone{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:7px;padding:5px 12px;cursor:pointer}
+.upload-zone:hover{background:rgba(255,255,255,0.14)}
+.upload-zone label{font-size:11px;color:#F5C08A;cursor:pointer;font-weight:500}.upload-zone input{display:none}
+.file-badge{font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--amber);color:#fff;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.nav-tabs{display:flex;gap:1px;padding:0 20px;background:var(--brown2);border-bottom:1px solid rgba(255,255,255,0.08)}
+.nav-tab{padding:9px 16px;font-size:12px;font-weight:500;color:#F5C08A;cursor:pointer;border:none;background:transparent;border-bottom:2px solid transparent;transition:all 0.15s}
+.nav-tab:hover{color:#fff}.nav-tab.active{color:var(--amber2);border-bottom-color:var(--amber2)}
+.ctrl-bar{background:#fff;border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.ctrl-group{display:flex;align-items:center;gap:6px}
+.ctrl-label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap}
+select.ctrl-sel{padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--slate);font-size:12px;font-family:'Inter',sans-serif;cursor:pointer;outline:none;min-width:120px}
+select.ctrl-sel:focus{border-color:var(--amber)}
+.mtd-toggle{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer;user-select:none}
+.mtd-toggle input[type=checkbox]{display:none}
+.mtd-sw{width:32px;height:17px;background:#CBD5E1;border-radius:20px;position:relative;transition:background 0.2s;flex-shrink:0}
+.mtd-sw::after{content:'';position:absolute;top:2px;left:2px;width:13px;height:13px;background:#fff;border-radius:50%;transition:left 0.2s;box-shadow:0 1px 2px rgba(0,0,0,0.2)}
+.mtd-toggle input:checked~.mtd-sw{background:var(--amber)}.mtd-toggle input:checked~.mtd-sw::after{left:17px}
+.mtd-lbl{font-size:11px;font-weight:600;color:var(--slate)}
+.mtd-info{font-size:10px;background:var(--amber-lt);color:var(--amber);padding:2px 8px;border-radius:10px;font-weight:600;display:none}
+.btn{padding:6px 14px;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.15s}
+.btn-brown{background:var(--brown);color:#fff}.btn-brown:hover{background:var(--brown2)}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.status-text{font-size:11px;color:var(--muted)}
+.page{display:none;padding:20px}.page.active{display:block}
+.sec-head{display:flex;align-items:baseline;gap:8px;margin-bottom:14px;margin-top:24px}
+.sec-head:first-child{margin-top:0}
+.sec-title{font-size:14px;font-weight:700;color:var(--brown)}.sec-sub{font-size:11px;color:var(--muted)}.sec-line{flex:1;height:1px;background:var(--border)}
+.mg{display:grid;gap:10px;margin-bottom:16px}
+.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}.g5{grid-template-columns:repeat(5,1fr)}
+.mc{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:12px 14px;border-left:4px solid var(--amber);box-shadow:0 1px 3px rgba(0,0,0,0.04);transition:box-shadow 0.15s}
+.mc:hover{box-shadow:0 4px 12px rgba(0,0,0,0.08)}
+.mc.gold{border-left-color:var(--orange)}.mc.red{border-left-color:var(--red)}.mc.green{border-left-color:var(--green)}.mc.purple{border-left-color:var(--purple)}
+.mc.teal{border-left-color:var(--amber2)}
+.mc.navy{border-left-color:var(--brown);background:var(--brown)}.mc.navy .ml,.mc.navy .ms{color:#F5C08A}.mc.navy .mv{color:#fff}
+.ml{font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:4px}
+.mv{font-size:20px;font-weight:700;color:var(--brown);line-height:1;font-family:'JetBrains Mono',monospace}
+.mv.sm{font-size:16px}.ms{font-size:10px;color:var(--muted);margin-top:3px}
+.ms .up{color:var(--green);font-weight:600}.ms .dn{color:var(--red);font-weight:600}
+.cg{display:grid;gap:14px;margin-bottom:16px}.cg2{grid-template-columns:1fr 1fr}.cg3{grid-template-columns:1fr 1fr 1fr}
+.cc{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+.ct{font-size:11px;font-weight:600;color:var(--brown);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.cb{font-size:9px;background:var(--amber-lt);color:var(--amber);padding:2px 7px;border-radius:20px;font-family:'JetBrains Mono',monospace;white-space:nowrap}
+canvas{max-width:100%}
+/* Agent cards */
+.agent-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
+.agent-card{background:var(--card);border:1px solid var(--border);border-radius:9px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);transition:box-shadow 0.15s}
+.agent-card:hover{box-shadow:0 6px 18px rgba(0,0,0,0.1)}
+.agent-hdr{padding:10px 13px;display:flex;align-items:center;justify-content:space-between}
+.agent-name{font-size:12px;font-weight:700;color:#fff}.agent-city{font-size:9px;color:rgba(255,255,255,0.65);margin-top:1px}
+.agent-ach{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;padding:3px 9px;border-radius:5px;background:rgba(255,255,255,0.15);color:#fff}
+.agent-body{padding:11px 13px}
+.agent-stats{display:flex;justify-content:space-between;margin-bottom:8px;gap:4px}
+.agent-stat .sl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--muted);margin-bottom:2px}
+.agent-stat .sv{font-size:12px;font-weight:700;color:var(--brown);font-family:'JetBrains Mono',monospace}
+.agent-stat .ss{font-size:9px;color:var(--muted)}
+.pbar-bg{height:5px;background:var(--border);border-radius:10px;margin:8px 0;overflow:hidden}
+.pbar-fill{height:100%;border-radius:10px;transition:width 0.6s}
+.spark-wrap{padding:0 13px 8px;height:65px}
+.drr-wrap{overflow-x:auto;margin-bottom:16px;border-radius:9px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+.drr-tbl{width:100%;border-collapse:collapse;font-size:11px;white-space:nowrap}
+.drr-tbl th{background:var(--brown);color:#fff;padding:7px 9px;text-align:center;font-size:9px;font-weight:600;letter-spacing:0.4px;position:sticky;top:0;z-index:1}
+.drr-tbl th:first-child{text-align:left;position:sticky;left:0;z-index:3;min-width:140px}
+.drr-tbl td{padding:5px 9px;border-bottom:1px solid var(--border);text-align:center;font-family:'JetBrains Mono',monospace}
+.drr-tbl td:first-child{text-align:left;position:sticky;left:0;background:var(--card);font-weight:600;color:var(--brown);font-family:'Inter',sans-serif;z-index:1}
+.drr-tbl tr:nth-child(even) td{background:#FFFAF5}.drr-tbl tr:nth-child(even) td:first-child{background:#FFF5EB}
+.drr-tbl tr.tr-total td{background:var(--brown)!important;color:#fff!important;font-weight:700;font-family:'JetBrains Mono',monospace}
+.drr-tbl tr.tr-total td:first-child{color:var(--amber2)!important}
+.c-up{color:var(--green);font-weight:600}.c-dn{color:var(--red);font-weight:600}.c-na{color:#CBD5E1}
+.placeholder{text-align:center;padding:60px 20px;color:var(--muted)}
+.placeholder h3{font-size:16px;font-weight:600;color:var(--brown);margin-bottom:6px}
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center}
+.modal{background:#fff;border-radius:14px;padding:28px;width:540px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.modal h2{font-size:16px;font-weight:700;color:var(--brown);margin-bottom:6px}
+.modal p{font-size:12px;color:var(--muted);margin-bottom:18px}
+.modal-step{margin-bottom:18px}
+.modal-step-num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--amber);color:#fff;font-size:10px;font-weight:700;margin-right:6px;flex-shrink:0}
+.modal-step-text{font-size:12px;color:var(--slate);line-height:1.6}
+.modal-step-text strong{color:var(--brown)}
+.modal-step-text code{background:var(--bg);padding:1px 5px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--amber)}
+.script-box{background:#1e1e2e;border-radius:8px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#CDD6F4;line-height:1.6;margin:8px 0;overflow-x:auto;white-space:pre}
+.modal-input{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:7px;font-size:12px;outline:none;font-family:'Inter',sans-serif;margin-bottom:6px}
+.modal-input:focus{border-color:var(--amber)}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.btn-outline{background:#fff;border:1px solid var(--border);color:var(--slate)}
+.btn-outline:hover{border-color:var(--amber);color:var(--amber)}
+.refresh-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.refresh-row label{font-size:11px;color:var(--slate)}
+.refresh-row select{padding:3px 7px;border-radius:5px;border:1px solid var(--border);font-size:11px;font-family:'Inter',sans-serif}
+/* DoW specific */
+.pill{font-size:9px;padding:1px 6px;border-radius:10px;font-weight:600}
+.pill.neu{background:var(--amber-lt);color:var(--amber)}
+@media(max-width:900px){.agent-grid{grid-template-columns:repeat(2,1fr)}.g4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.agent-grid,.g4,.g3{grid-template-columns:1fr}.cg2,.cg3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div>
+    <div class="brand">FPT DRR Dashboard <span>PARTNER CHANNEL · VYAPAR</span></div>
+  </div>
+  <div class="topbar-right">
+    <div class="upload-zone" onclick="document.getElementById('fu').click()">
+      <label for="fu">📁 Upload Excel</label>
+      <input type="file" id="fu" accept=".xlsx,.xls" multiple onchange="handleFiles(this.files)">
+    </div>
+    <div class="upload-zone" onclick="showSheetsModal()" style="border-color:rgba(245,160,0,0.4)">
+      <label style="color:var(--amber2)">🔗 Google Sheets</label>
+    </div>
+    <span class="file-badge" id="fileBadge" style="display:none"></span>
+    <span class="status-text" id="statusTxt">Upload data or connect Google Sheets to begin</span>
+  </div>
+</div>
+
+<!-- Nav tabs -->
+<div class="nav-tabs">
+  <button class="nav-tab active" onclick="showPage('overview',this)">Overview</button>
+  <button class="nav-tab" onclick="showPage('daily',this)">Daily DRR</button>
+  <button class="nav-tab" onclick="showPage('agent',this)">Agent Wise</button>
+  <button class="nav-tab" onclick="showPage('cmp',this)">Month Comparison</button>
+  <button class="nav-tab" onclick="showPage('dow',this)">Day of Week</button>
+</div>
+
+<!-- Controls -->
+<div class="ctrl-bar">
+  <div class="ctrl-group"><span class="ctrl-label">Primary Month</span>
+    <select class="ctrl-sel" id="selM1" onchange="render()"><option>—</option></select></div>
+  <div class="ctrl-group"><span class="ctrl-label">Compare With</span>
+    <select class="ctrl-sel" id="selM2" onchange="render()"><option value="">— None —</option></select></div>
+  <label class="mtd-toggle"><input type="checkbox" id="mtdChk" onchange="onMTDChange()">
+    <span class="mtd-sw"></span><span class="mtd-lbl">MTD Mode</span></label>
+  <span class="mtd-info" id="mtdInfo"></span>
+  <span style="flex:1"></span>
+  <span class="status-text" id="dataSource" style="font-size:10px;color:#94A3B8"></span>
+  <button class="btn btn-brown" onclick="render()">↻ Refresh</button>
+</div>
+
+<!-- Pages -->
+<div class="page active" id="page-overview"><div id="ov-content"><div class="placeholder"><h3>FPT Overview</h3><p>Upload data or connect Google Sheets to begin.</p></div></div></div>
+<div class="page" id="page-daily"><div id="drr-content"><div class="placeholder"><h3>Daily DRR</h3><p>Upload data to begin.</p></div></div></div>
+<div class="page" id="page-agent"><div id="agent-content"><div class="placeholder"><h3>Agent Wise Analysis</h3><p>Upload data to begin.</p></div></div></div>
+<div class="page" id="page-cmp"><div id="cmp-content"><div class="placeholder"><h3>Month Comparison</h3><p>Select a comparison month.</p></div></div></div>
+<div class="page" id="page-dow"><div id="dow-content"><div class="placeholder"><h3>Day of Week Analysis</h3><p>Upload data to begin.</p></div></div></div>
+
+<!-- Sheets Modal -->
+<div class="modal-overlay" id="sheetsModal" style="display:none">
+  <div class="modal">
+    <h2>🔗 Connect Google Sheets</h2>
+    <p>Link your FPT daily data sheet for live updates.</p>
+    <div class="modal-step">
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <span class="modal-step-num">1</span>
+        <div class="modal-step-text">Open your Google Sheet → <strong>Extensions → Apps Script</strong>. Delete existing code and paste this:</div>
+      </div>
+      <div class="script-box">function doGet(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data  = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var rows = data.slice(1).map(function(row) {
+    var obj = {};
+    headers.forEach(function(h, i) { obj[h] = row[i]; });
+    return obj;
+  });
+  var cb = e &amp;&amp; e.parameter &amp;&amp; e.parameter.callback ? e.parameter.callback : null;
+  if (cb) {
+    return ContentService.createTextOutput(cb + '(' + JSON.stringify(rows) + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput(JSON.stringify(rows))
+    .setMimeType(ContentService.MimeType.JSON);
+}</div>
+    </div>
+    <div class="modal-step">
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <span class="modal-step-num">2</span>
+        <div class="modal-step-text">Click <strong>Deploy → New deployment</strong> → Type: <strong>Web app</strong> → Execute as: <strong>Me</strong> → Who has access: <strong>Anyone</strong> → Click <strong>Deploy</strong>. Copy the Web app URL.</div>
+      </div>
+    </div>
+    <div class="modal-step">
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <span class="modal-step-num">3</span>
+        <div class="modal-step-text">Paste the <code>/exec</code> URL below. Sheet must have columns: <code>payment_month, payment_date, agent_email, rev_ex_gst, total_licenses, desktop_sold</code></div>
+      </div>
+    </div>
+    <textarea class="modal-input" id="sheetsUrl" rows="2" placeholder="https://script.google.com/macros/s/.../exec"></textarea>
+    <div class="refresh-row">
+      <label><input type="checkbox" id="autoRefresh" checked> Auto-refresh every</label>
+      <select id="refreshInterval">
+        <option value="60000">1 min</option>
+        <option value="300000" selected>5 min</option>
+        <option value="600000">10 min</option>
+        <option value="1800000">30 min</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeSheetsModal()">Cancel</button>
+      <button class="btn btn-brown" onclick="connectSheets()">Connect</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// CONFIG — Agent map with display names and targets (Apr'26)
+// ═══════════════════════════════════════════════════════
+// Targets from FY27_Planning_FPT.xlsx (' FPT' sheet) — April 26 total: ₹15.07L
+// Per-agent targets distributed proportionally using IC sheet incentive slab weights
+const AGENT_MAP = {
+  // Ahmedabad — 7 agents
+  'janam.shah@vyapar.com':             {name:'Janam',        city:'Ahmedabad', tgt:98881},
+  'karan.singhsaini@vyapar.com':       {name:'Karan Singh',  city:'Ahmedabad', tgt:98881},
+  'vedantajaybhai.pawar@vyapar.com':   {name:'Vedant',       city:'Ahmedabad', tgt:98881},
+  'vishwaskumar@vyapar.com':           {name:'Vishwas Patel',city:'Ahmedabad', tgt:98881},
+  'abdullah.khatri@vyapar.com':        {name:'Abdullah',     city:'Ahmedabad', tgt:98881},
+  'shaikhmohammad.faizan@vyapar.com':  {name:'Faizan',       city:'Ahmedabad', tgt:98881},
+  'shoaib.shabhuddin@vyapar.com':      {name:'Shoaib',       city:'Ahmedabad', tgt:98881},
+  // Indore — 1 agent
+  'mayankj@vyaparapp.in':              {name:'Mayank',       city:'Indore',    tgt:113007},
+  // Surat — 11 agents
+  'bharatkumar.rawal@vyapar.com':      {name:'Bharat',       city:'Surat',     tgt:75338},
+  'ketan.kalsariya@vyapar.com':        {name:'Ketan',        city:'Surat',     tgt:75338},
+  'sondagar.rajendra@vyapar.com':      {name:'Rajendra',     city:'Surat',     tgt:75338},
+  'shashank.kiritshah@vyapar.com':     {name:'Shashank',     city:'Surat',     tgt:75338},
+  'valasujal.naresh@vyapar.com':       {name:'Sujal',        city:'Surat',     tgt:61212},
+  'parekh.amit@vyapar.com':            {name:'Amit Parekh',  city:'Surat',     tgt:37669},
+  'ramlakhan@vyapar.com':              {name:'Lakhan',       city:'Surat',     tgt:37669},
+  'ajay.kumar@vyapar.com':             {name:'Ajay Kumar',   city:'Surat',     tgt:37669},
+  'pareek.manish@vyapar.com':          {name:'Manish',       city:'Surat',     tgt:37669},
+  'prakash.ashok@vyapar.com':          {name:'Ashok Prakash',city:'Surat',     tgt:37669},
+  'sachin.pravin@vyapar.com':          {name:'Sachin',       city:'Surat',     tgt:37669},
+  'patel.shubham@vyapar.com':          {name:'Shubham Patel',city:'Surat',     tgt:37669},
+  // Vadodara — 2 agents (both mapped to Moin)
+  'priyesh.chaturvedi@vyapar.com':     {name:'Priyesh/Moin', city:'Vadodara',  tgt:37669},
+  'gajipuramoin.amin@vyapar.com':      {name:'Moin',         city:'Vadodara',  tgt:37669},
+};
+
+const CITY_TGT = {Ahmedabad:692167, Surat:601557, Indore:113007, Vadodara:75338};
+const TOTAL_TGT = 1506765; // ₹15.07L from FY27_Planning_FPT.xlsx
+const AGENT_CLR = ['#D97706','#EA580C','#B45309','#92400E','#059669','#0891B2','#7C3AED','#DC2626','#0D9488','#BE185D','#6D28D9'];
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+let allData = [];
+const CHARTS = {};
+var sheetsUrl = '';
+var refreshTimer = null;
+var STORAGE_KEY = 'fpt_drr_sheets_url_v1';
+var INTERVAL_KEY = 'fpt_drr_refresh_interval';
+
+// ═══════════════════════════════════════════════════════
+// DATE HELPERS
+// ═══════════════════════════════════════════════════════
+function parseDateLocal(s){
+  if(!s) return new Date(NaN);
+  const [y,m,d]=(s+'').slice(0,10).split('-').map(Number);
+  return new Date(y,m-1,d);
+}
+
+function parseDateStr(v){
+  if(!v) return '';
+  v = String(v).trim();
+  if(/^\d{4}-\d{2}-\d{2}T/.test(v)){
+    var d=new Date(v), ist=new Date(d.getTime()+5.5*60*60*1000);
+    return ist.getUTCFullYear()+'-'+String(ist.getUTCMonth()+1).padStart(2,'0')+'-'+String(ist.getUTCDate()).padStart(2,'0');
+  }
+  if(/^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0,10);
+  var s=v.split('/');
+  if(s.length===3) return s[2].slice(0,4)+'-'+s[0].padStart(2,'0')+'-'+s[1].padStart(2,'0');
+  return v.slice(0,10);
+}
+
+function parseMonthStr(v){
+  if(!v) return '';
+  v = String(v).trim();
+  if(/^\d{4}-\d{2}-\d{2}T/.test(v)){
+    var d=new Date(v), ist=new Date(d.getTime()+5.5*60*60*1000);
+    return ist.getUTCFullYear()+'-'+String(ist.getUTCMonth()+1).padStart(2,'0');
+  }
+  if(/^\d{4}-\d{2}/.test(v)) return v.slice(0,7);
+  var s=v.split('/');
+  if(s.length===3) return s[2].slice(0,4)+'-'+s[0].padStart(2,'0');
+  return v.slice(0,7);
+}
+
+function fmtMonth(m){
+  if(!m) return '';
+  try{ const [y,mo]=m.split('-').map(Number); return new Date(y,mo-1,1).toLocaleString('en-IN',{month:'short',year:'2-digit'}); }catch{return m;}
+}
+
+function daysInMonth(month){ const [y,m]=month.split('-').map(Number); return new Date(y,m,0).getDate(); }
+function fmtRev(v,dec=1){ if(!v||isNaN(v)) return '₹0'; if(Math.abs(v)>=10000000) return '₹'+(v/10000000).toFixed(dec)+'Cr'; if(Math.abs(v)>=100000) return '₹'+(v/100000).toFixed(dec)+'L'; return '₹'+Math.round(v).toLocaleString('en-IN'); }
+function fmtPct(v){ return (v>=0?'+':'')+v.toFixed(1)+'%'; }
+function chgClr(v){ return v>=0?'var(--green)':'var(--red)'; }
+
+// ═══════════════════════════════════════════════════════
+// FILE HANDLING
+// ═══════════════════════════════════════════════════════
+async function handleFiles(files){
+  if(!files||!files.length) return;
+  document.getElementById('statusTxt').textContent='Loading…';
+  for(const f of files){
+    const rows=await readXLSX(f);
+    const existing=new Set(allData.map(r=>`${r.month}|${r.date}|${r.agent}|${r.ref}`));
+    for(const r of rows){
+      const k=`${r.month}|${r.date}|${r.agent}|${r.ref}`;
+      if(!existing.has(k)){allData.push(r);existing.add(k);}
+    }
+  }
+  refreshSelects();
+  document.getElementById('fileBadge').style.display='inline';
+  document.getElementById('fileBadge').textContent=allData.length+' rows · '+getMonths().length+' months';
+  document.getElementById('statusTxt').textContent=allData.length+' records · '+getMonths().length+' months';
+  render();
+}
+
+function readXLSX(file){
+  return new Promise(res=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      // Try 'result' sheet first, else first sheet
+      const sheetName = wb.SheetNames.includes('result') ? 'result' : wb.SheetNames[0];
+      const ws=wb.Sheets[sheetName];
+      const raw=XLSX.utils.sheet_to_json(ws,{raw:false});
+      const rows=[];
+      for(const row of raw){
+        // Support both 'f0_' (FPT result sheet) and 'payment_month'
+        const rawMonth = (row.payment_month||row.f0_||'').toString().trim();
+        const month = parseMonthStr(rawMonth);
+        const dateStr = parseDateStr((row.payment_date||'').toString().trim());
+        const agent = (row.agent_email||'').toString().trim().toLowerCase();
+        if(!month||!dateStr||!agent) continue;
+        rows.push({month, date:dateStr, agent,
+          ref:(row.referral_code||'').toString().trim(),
+          lic:parseFloat(row.total_licenses)||0,
+          dlic:parseFloat(row.desktop_sold||row.desktop_licenses)||0,
+          rev:parseFloat(row.rev_ex_gst)||0});
+      }
+      res(rows);
+    };
+    r.readAsBinaryString(file);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// DATA HELPERS
+// ═══════════════════════════════════════════════════════
+function getMonths(){ return [...new Set(allData.map(r=>r.month))].sort(); }
+
+function refreshSelects(){
+  const months=getMonths();
+  const s1=document.getElementById('selM1'),s2=document.getElementById('selM2');
+  const p1=s1.value,p2=s2.value;
+  s1.innerHTML=months.map(m=>`<option value="${m}">${fmtMonth(m)}</option>`).join('');
+  s2.innerHTML=`<option value="">— None —</option>`+months.map(m=>`<option value="${m}">${fmtMonth(m)}</option>`).join('');
+  s1.value=p1&&months.includes(p1)?p1:months[months.length-1];
+  s2.value=p2&&months.includes(p2)?p2:(months.length>=2?months[months.length-2]:'');
+}
+
+function isMTD(){ return document.getElementById('mtdChk').checked; }
+function onMTDChange(){
+  const on=isMTD(), info=document.getElementById('mtdInfo');
+  if(on){ const m1=document.getElementById('selM1').value; info.style.display='inline'; info.textContent='MTD: first '+getElapsed(m1)+'d'; }
+  else info.style.display='none';
+  render();
+}
+function getElapsed(month){ return [...new Set(allData.filter(r=>r.month===month).map(r=>r.date))].length; }
+
+function getRows(month, agentFilter){
+  let rows=allData.filter(r=>r.month===month);
+  if(agentFilter&&agentFilter!=='ALL') rows=rows.filter(r=>r.agent===agentFilter);
+  return rows;
+}
+
+function sliceMTD(rows,month,cutoff){
+  const dates=[...new Set(rows.filter(r=>r.month===month).map(r=>r.date))].sort().slice(0,cutoff);
+  const allowed=new Set(dates);
+  return rows.filter(r=>r.month===month&&allowed.has(r.date));
+}
+
+function getPair(m1,m2,agentFilter){
+  let r1=getRows(m1,agentFilter);
+  let r2=m2?getRows(m2,agentFilter):null;
+  if(isMTD()&&m2&&r2){
+    const e=getElapsed(m1);
+    r2=sliceMTD(allData.filter(r=>r.month===m2&&(!agentFilter||agentFilter==='ALL'||r.agent===agentFilter)),m2,e);
+  }
+  return [r1,r2];
+}
+
+function byDate(rows){ const o={}; for(const r of rows){o[r.date]=(o[r.date]||0)+r.rev;} return o; }
+function byAgent(rows){ const o={}; for(const r of rows){ if(!o[r.agent]) o[r.agent]={rev:0,lic:0,dlic:0,days:new Set()}; o[r.agent].rev+=r.rev; o[r.agent].lic+=r.lic; o[r.agent].dlic+=r.dlic; o[r.agent].days.add(r.date); } return o; }
+function totalTgt(agentFilter){ if(agentFilter&&agentFilter!=='ALL') return AGENT_MAP[agentFilter]?.tgt||0; return TOTAL_TGT; }
+
+const TOOLTIP_CFG={backgroundColor:'rgba(74,30,0,0.93)',titleColor:'#F59E0B',bodyColor:'#e2e8f0',padding:8,titleFont:{family:'Inter',size:10,weight:'600'},bodyFont:{family:'JetBrains Mono',size:10},cornerRadius:6};
+
+function mkChart(id,type,data,opts){
+  const el=document.getElementById(id); if(!el) return;
+  if(CHARTS[id]){CHARTS[id].destroy();delete CHARTS[id];}
+  CHARTS[id]=new Chart(el,{type,data,options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:TOOLTIP_CFG},...opts}});
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER ROUTER
+// ═══════════════════════════════════════════════════════
+function render(){
+  const m1=document.getElementById('selM1').value;
+  const m2=document.getElementById('selM2').value||null;
+  const mtd=isMTD();
+  const elapsed=m1?getElapsed(m1):0;
+  if(mtd){const info=document.getElementById('mtdInfo');info.style.display='inline';info.textContent='MTD: first '+elapsed+'d';}
+  renderOverview(m1,m2,null,mtd,elapsed);
+  renderDRR(m1,m2,null,mtd,elapsed);
+  renderAgentWise(m1,m2,null,mtd,elapsed);
+  renderComparison(m1,m2,null,mtd,elapsed);
+  renderDOW(m1,m2,null,mtd,elapsed);
+}
+
+// ═══════════════════════════════════════════════════════
+// OVERVIEW
+// ═══════════════════════════════════════════════════════
+function renderOverview(m1,m2,ag,mtd,elapsed){
+  const [r1,r2]=getPair(m1,m2,ag);
+  if(!r1.length){ document.getElementById('ov-content').innerHTML='<div class="placeholder"><h3>FPT Overview</h3><p>Upload data or connect Google Sheets to begin.</p></div>'; return; }
+
+  const rev1=r1.reduce((s,r)=>s+r.rev,0), rev2=r2?r2.reduce((s,r)=>s+r.rev,0):null;
+  const lic1=r1.reduce((s,r)=>s+r.dlic,0), lic2=r2?r2.reduce((s,r)=>s+r.dlic,0):null;
+  const tgt=totalTgt(ag), days=daysInMonth(m1);
+  const dailyAvg=elapsed>0?rev1/elapsed:0;
+  const proj=dailyAvg*days;
+  const achPct=tgt>0?rev1/tgt*100:0;
+  const chgRev=rev2?((rev1-rev2)/rev2*100):null;
+  const mtdTag=mtd&&m2?` <span class="pill neu">MTD ${elapsed}d</span>`:'';
+  const cmpLabel=m2?` vs ${fmtMonth(m2)}${mtdTag}`:'';
+
+  const allDates=[...new Set(r1.map(r=>r.date))].sort();
+  const bd1=byDate(r1), bd2=r2?byDate(r2):{};
+  let cum1=[],cum2=[],s1=0,s2=0;
+  allDates.forEach(d=>{s1+=(bd1[d]||0);cum1.push(Math.round(s1));});
+  if(r2){const d2=[...new Set(r2.map(r=>r.date))].sort(); d2.forEach(d=>{s2+=(bd2[d]||0);cum2.push(Math.round(s2));});}
+
+  const ag1=byAgent(r1), ag2=r2?byAgent(r2):{};
+  const agents=Object.keys(ag1).filter(a=>AGENT_MAP[a]).sort((a,b)=>ag1[b].rev-ag1[a].rev);
+  const topN=agents.slice(0,5);
+
+  document.getElementById('ov-content').innerHTML=`
+  <div class="sec-head"><span class="sec-title">Overview — ${fmtMonth(m1)}${cmpLabel}</span><div class="sec-line"></div></div>
+  <div class="mg g4" style="margin-bottom:16px">
+    <div class="mc navy">
+      <div class="ml">MTD Revenue</div>
+      <div class="mv">${fmtRev(rev1)}</div>
+      <div class="ms">${chgRev!==null?`<span class="${chgRev>=0?'up':'dn'}">${fmtPct(chgRev)} vs ${fmtMonth(m2)}</span>`:''}</div>
+    </div>
+    <div class="mc">
+      <div class="ml">Achievement</div>
+      <div class="mv">${achPct.toFixed(1)}%</div>
+      <div class="ms">${fmtRev(rev1)} of ${fmtRev(tgt)}</div>
+    </div>
+    <div class="mc">
+      <div class="ml">Days ${elapsed}/${days}</div>
+      <div class="mv">${elapsed}<span style="font-size:11px;color:var(--muted)">/${days}</span></div>
+      <div class="ms">Avg/day: ${fmtRev(dailyAvg)}</div>
+    </div>
+    <div class="mc gold">
+      <div class="ml">Projected</div>
+      <div class="mv sm">${fmtRev(proj)}</div>
+      <div class="ms">Gap: ${fmtRev(proj-tgt)}</div>
+    </div>
+  </div>
+  <div class="cg cg2" style="margin-bottom:16px">
+    <div class="cc"><div class="ct">Daily Revenue${m2?` — ${fmtMonth(m1)} vs ${fmtMonth(m2)}${mtd?' (MTD)':''}`:''}
+      <span class="cb">₹</span></div>
+      <div style="height:200px"><canvas id="ch-daily"></canvas></div></div>
+    <div class="cc"><div class="ct">Cumulative vs Target<span class="cb">${fmtMonth(m1)}</span></div>
+      <div style="height:200px"><canvas id="ch-cum"></canvas></div></div>
+  </div>
+  <div class="cg cg2">
+    <div class="cc"><div class="ct">Top 5 Agents — ${fmtMonth(m1)}<span class="cb">Revenue</span></div>
+      <div style="height:200px"><canvas id="ch-top"></canvas></div></div>
+    <div class="cc"><div class="ct">Agent Revenue Distribution<span class="cb">${fmtMonth(m1)}</span></div>
+      <div style="height:200px"><canvas id="ch-pie"></canvas></div></div>
+  </div>`;
+
+  // Daily bar chart
+  const ds=[{label:fmtMonth(m1),data:allDates.map(d=>Math.round(bd1[d]||0)),backgroundColor:'rgba(217,119,6,0.75)',borderColor:'#D97706',borderWidth:1,borderRadius:3}];
+  if(r2){const d2=[...new Set(r2.map(r=>r.date))].sort();ds.push({label:fmtMonth(m2)+(mtd?' MTD':''),data:allDates.map(d=>Math.round(bd2[d]||0)),backgroundColor:'rgba(234,88,12,0.4)',borderColor:'#EA580C',borderWidth:1,borderRadius:3});}
+  mkChart('ch-daily','bar',{labels:allDates.map(d=>d.slice(8)),datasets:ds},{scales:{x:{grid:{display:false},ticks:{font:{family:'JetBrains Mono',size:8},color:'#64748B'}},y:{grid:{color:'rgba(226,232,240,0.7)'},ticks:{callback:v=>fmtRev(v,0),font:{family:'JetBrains Mono',size:9}}}},plugins:{legend:{display:!!r2,labels:{font:{family:'Inter',size:9},boxWidth:8,padding:8}},tooltip:Object.assign({},TOOLTIP_CFG,{callbacks:{title:i=>'Date: '+allDates[i[0].dataIndex],label:c=>' '+c.dataset.label+': '+fmtRev(c.parsed.y)}})}});
+
+  // Cumulative chart
+  const cumDs=[{label:fmtMonth(m1),data:cum1,borderColor:'#D97706',backgroundColor:'rgba(217,119,6,0.07)',fill:true,tension:0.3,pointRadius:2,borderWidth:2.5}];
+  cumDs.push({label:'Target',data:allDates.map((_,i)=>Math.round(tgt/days*(i+1))),borderColor:'#DC2626',borderDash:[4,3],pointRadius:0,borderWidth:1.5,backgroundColor:'transparent',fill:false});
+  if(r2&&cum2.length){const d2=[...new Set(r2.map(r=>r.date))].sort();cumDs.push({label:fmtMonth(m2)+(mtd?' MTD':''),data:d2.map((_,i)=>cum2[i]||0),borderColor:'#EA580C',backgroundColor:'transparent',tension:0.3,pointRadius:2,borderWidth:1.5,borderDash:[3,2],fill:false});}
+  mkChart('ch-cum','line',{labels:allDates.map(d=>d.slice(8)),datasets:cumDs},{scales:{x:{grid:{display:false},ticks:{font:{family:'JetBrains Mono',size:8},color:'#64748B'}},y:{grid:{color:'rgba(226,232,240,0.7)'},ticks:{callback:v=>fmtRev(v,0),font:{family:'JetBrains Mono',size:9}}}},plugins:{legend:{display:true,labels:{font:{family:'Inter',size:9},boxWidth:8,padding:8}},tooltip:Object.assign({},TOOLTIP_CFG,{callbacks:{label:c=>' '+c.dataset.label+': '+fmtRev(c.parsed.y)}})}});
+
+  // Top agents bar
+  mkChart('ch-top','bar',{labels:topN.map(a=>AGENT_MAP[a]?.name||a),datasets:[{data:topN.map(a=>Math.round(ag1[a].rev)),backgroundColor:AGENT_CLR.slice(0,topN.length),borderRadius:5}]},{indexAxis:'y',scales:{x:{grid:{color:'rgba(226,232,240,0.7)'},ticks:{callback:v=>fmtRev(v,0),font:{family:'JetBrains Mono',size:9}}},y:{grid:{display:false},ticks:{font:{family:'Inter',size:10},color:'#334155'}}},plugins:{tooltip:Object.assign({},TOOLTIP_CFG,{callbacks:{label:c=>' Rev: '+fmtRev(c.parsed.x)}})}});
+
+  // Pie chart
+  const pieEl=document.getElementById('ch-pie');
+  if(pieEl){if(CHARTS['ch-pie']){CHARTS['ch-pie'].destroy();delete CHARTS['ch-pie'];}
+    CHARTS['ch-pie']=new Chart(pieEl,{type:'doughnut',
+      data:{labels:agents.map(a=>AGENT_MAP[a]?.name||a),datasets:[{data:agents.map(a=>Math.round(ag1[a].rev)),backgroundColor:AGENT_CLR.concat(AGENT_CLR),borderWidth:2,borderColor:'#fff'}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'Inter',size:9},boxWidth:8,padding:5}},tooltip:Object.assign({},TOOLTIP_CFG,{callbacks:{label:c=>`${c.label}: ${fmtRev(c.parsed)} (${rev1>0?(c.parsed/rev1*100).toFixed(1):'0'}%)`}}),scales:{}}}});}
+}
+
+// ═══════════════════════════════════════════════════════
+// DAILY DRR TABLE
+// ═══════════════════════════════════════════════════════
+function renderDRR(m1,m2,ag,mtd,elapsed){
+  const [r1,r2]=getPair(m1,m2,ag);
+  if(!r1.length){ document.getElementById('drr-content').innerHTML='<div class="placeholder"><h3>Daily DRR</h3><p>Upload data to begin.</p></div>'; return; }
+
+  const tgt=totalTgt(ag), days=daysInMonth(m1), dailyTgt=tgt/days;
+  const allDates=[...new Set(r1.map(r=>r.date))].sort();
+  const bd1=byDate(r1), bd2=r2?byDate(r2):{};
+  const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const mtdTag=mtd&&m2?` <span class="pill neu">MTD ${elapsed}d</span>`:'';
+
+  let rows='',cumRev=0;
+  for(const dt of allDates){
+    const v1=bd1[dt]||0, v2=bd2[dt]||null;
+    cumRev+=v1;
+    const chg=v2?((v1-v2)/v2*100):null;
+    const dow=DAYS[parseDateLocal(dt).getDay()];
+    const cls=v1>=dailyTgt?'c-up':v1>=dailyTgt*0.7?'':'c-dn';
+    rows+=`<tr>
+      <td>${dt} <span style="font-size:9px;color:var(--muted)">${dow}</span></td>
+      <td class="${cls}">${fmtRev(v1)}</td>
+      ${m2?`<td>${v2!==null?fmtRev(v2):'<span class="c-na">—</span>'}</td><td>${chg!==null?`<span class="${chg>=0?'c-up':'c-dn'}">${fmtPct(chg)}</span>`:'<span class="c-na">—</span>'}</td>`:''}
+      <td>${fmtRev(dailyTgt)}</td>
+      <td class="${v1>=dailyTgt?'c-up':v1>=dailyTgt*0.7?'':'c-dn'}">${fmtRev(v1-dailyTgt)}</td>
+      <td style="color:var(--muted)">${fmtRev(cumRev)}</td>
+    </tr>`;
+  }
+
+  const totRev=r1.reduce((s,r)=>s+r.rev,0);
+  document.getElementById('drr-content').innerHTML=`
+  <div class="sec-head"><span class="sec-title">Daily Revenue Report — ${fmtMonth(m1)}${mtdTag}</span><div class="sec-line"></div></div>
+  <div class="drr-wrap"><table class="drr-tbl">
+    <thead><tr>
+      <th>Date</th><th>${fmtMonth(m1)}</th>
+      ${m2?`<th>${fmtMonth(m2)}${mtd?' MTD':''}</th><th>Change</th>`:''}
+      <th>Daily Tgt</th><th>Gap</th><th>Cumulative</th>
+    </tr></thead>
+    <tbody>${rows}
+      <tr class="tr-total">
+        <td>TOTAL</td><td>${fmtRev(totRev)}</td>
+        ${m2?`<td>${r2?fmtRev(r2.reduce((s,r)=>s+r.rev,0)):'—'}</td><td>${r2?fmtPct((totRev-r2.reduce((s,r)=>s+r.rev,0))/r2.reduce((s,r)=>s+r.rev,0)*100):'—'}</td>`:''}
+        <td>${fmtRev(tgt)}</td><td>${fmtRev(totRev-tgt)}</td><td>—</td>
+      </tr>
+    </tbody>
+  </table></div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// AGENT WISE
+// ═══════════════════════════════════════════════════════
+function renderAgentWise(m1,m2,ag,mtd,elapsed){
+  const [r1,r2]=getPair(m1,m2,ag);
+  if(!r1.length){ document.getElementById('agent-content').innerHTML='<div class="placeholder"><h3>Agent Wise Analysis</h3><p>Upload data to begin.</p></div>'; return; }
+
+  const tgt=totalTgt(ag), days=daysInMonth(m1), dailyTgt=tgt/days;
+  const ag1=byAgent(r1), ag2=r2?byAgent(r2):{};
+  const agents=Object.keys(ag1).filter(a=>AGENT_MAP[a]).sort((a,b)=>ag1[a].rev-ag1[b].rev);
+  const mtdTag=mtd&&m2?` <span class="pill neu">MTD ${elapsed}d</span>`:'';
+
+  // Agent cards
+  const cards=Object.keys(ag1).filter(a=>AGENT_MAP[a]).sort((a,b)=>ag1[b].rev-ag1[a].rev).map((a,i)=>{
+    const info=AGENT_MAP[a], d=ag1[a];
+    const aTgt=info.tgt, achPct=aTgt>0?d.rev/aTgt*100:0;
+    const prev=ag2[a]?.rev||null;
+    const chg=prev?((d.rev-prev)/prev*100):null;
+    const barClr=achPct>=95?'var(--green)':achPct>=70?'var(--amber)':'var(--red)';
+    const hdrClr=AGENT_CLR[i%AGENT_CLR.length];
+    // Mini daily sparkline
+    const agDates=[...new Set(r1.filter(r=>r.agent===a).map(r=>r.date))].sort();
+    const agByDate={};r1.filter(r=>r.agent===a).forEach(r=>agByDate[r.date]=(agByDate[r.date]||0)+r.rev);
+    const sparkData=agDates.map(d=>agByDate[d]||0);
+    const sparkMax=Math.max(...sparkData,1);
+    const sparkBars=sparkData.map(v=>`<div style="flex:1;background:${hdrClr};border-radius:2px 2px 0 0;height:${Math.max(2,v/sparkMax*36)}px;opacity:0.7"></div>`).join('');
+    return `<div class="agent-card">
+      <div class="agent-hdr" style="background:${hdrClr}">
+        <div><div class="agent-name">${info.name}</div><div class="agent-city">${info.city}</div></div>
+        <div class="agent-ach">${achPct.toFixed(0)}%</div>
+      </div>
+      <div class="agent-body">
+        <div class="agent-stats">
+          <div class="agent-stat"><div class="sl">Revenue</div><div class="sv">${fmtRev(d.rev)}</div></div>
+          <div class="agent-stat"><div class="sl">Dsk Lic</div><div class="sv">${d.dlic}</div></div>
+          <div class="agent-stat"><div class="sl">Target</div><div class="sv">${fmtRev(aTgt)}</div><div class="ss">${fmtRev(d.rev-aTgt)} gap</div></div>
+        </div>
+        <div class="pbar-bg"><div class="pbar-fill" style="width:${Math.min(achPct,100)}%;background:${barClr}"></div></div>
+        ${chg!==null?`<div style="font-size:10px;margin-bottom:6px"><span style="color:${chg>=0?'var(--green)':'var(--red)'};font-weight:600">${fmtPct(chg)}</span> <span style="color:var(--muted)">vs ${fmtMonth(m2)}${mtd?' MTD':''}</span></div>`:''}
+        <div class="spark-wrap"><div style="display:flex;align-items:flex-end;gap:2px;height:36px">${sparkBars}</div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Agent DRR table — dates as columns
+  const allDates=[...new Set(r1.map(r=>r.date))].sort();
+  const agByDateMap={};
+  for(const a of Object.keys(ag1).filter(x=>AGENT_MAP[x])){
+    agByDateMap[a]={};
+    r1.filter(r=>r.agent===a).forEach(r=>agByDateMap[a][r.date]=(agByDateMap[a][r.date]||0)+r.rev);
+  }
+  const agentsSorted=Object.keys(ag1).filter(a=>AGENT_MAP[a]).sort((a,b)=>ag1[b].rev-ag1[a].rev);
+  const totByDate={};allDates.forEach(d=>{totByDate[d]=agentsSorted.reduce((s,a)=>s+(agByDateMap[a][d]||0),0);});
+
+  const tblRows=agentsSorted.map(a=>{
+    const info=AGENT_MAP[a], aTgt=info.tgt, dTgt=aTgt/days;
+    const cells=allDates.map(d=>{
+      const v=agByDateMap[a][d]||0;
+      const cls=v>0?(v>=dTgt?'c-up':v>=dTgt*0.7?'':'c-dn'):'c-na';
+      return v>0?`<td class="${cls}">${fmtRev(v,0)}</td>`:`<td class="c-na">—</td>`;
+    }).join('');
+    const total=ag1[a].rev;
+    const achPct=aTgt>0?total/aTgt*100:0;
+    const achCls=achPct>=95?'c-up':achPct>=70?'':'c-dn';
+    return `<tr><td><strong>${info.name}</strong><br><span style="font-size:9px;color:var(--muted)">${info.city}</span></td>${cells}<td class="${achCls}" style="font-weight:700">${fmtRev(total,0)}</td><td class="${achCls}">${achPct.toFixed(0)}%</td></tr>`;
+  }).join('');
+
+  const totCells=allDates.map(d=>`<td style="font-weight:700">${fmtRev(totByDate[d]||0,0)}</td>`).join('');
+  const grandTotal=agentsSorted.reduce((s,a)=>s+ag1[a].rev,0);
+
+  document.getElementById('agent-content').innerHTML=`
+  <div class="sec-head"><span class="sec-title">Agent Performance — ${fmtMonth(m1)}${mtdTag}</span><div class="sec-line"></div></div>
+  <div class="agent-grid">${cards}</div>
+  <div class="sec-head"><span class="sec-title">Agent-wise Daily DRR</span>
+    <span class="sec-sub">Revenue per agent per day · green = on target</span><div class="sec-line"></div></div>
+  <div class="drr-wrap"><table class="drr-tbl">
+    <thead><tr><th>Agent</th>${allDates.map(d=>`<th>${d.slice(8)}<br><span style="font-size:8px;opacity:0.7">${['S','M','T','W','T','F','S'][parseDateLocal(d).getDay()]}</span></th>`).join('')}<th>Total</th><th>Ach%</th></tr></thead>
+    <tbody>${tblRows}
+      <tr class="tr-total"><td>TOTAL</td>${totCells}<td>${fmtRev(grandTotal,0)}</td><td>${tgt>0?(grandTotal/tgt*100).toFixed(0)+'%':'—'}</td></tr>
+    </tbody>
+  </table></div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// MONTH COMPARISON
+// ═══════════════════════════════════════════════════════
+function renderComparison(m1,m2,ag,mtd,elapsed){
+  if(!m2||!allData.length){ document.getElementById('cmp-content').innerHTML='<div class="placeholder"><h3>Month Comparison</h3><p>Select a comparison month.</p></div>'; return; }
+  const [r1,r2]=getPair(m1,m2,ag);
+  if(!r1.length||!r2||!r2.length){ document.getElementById('cmp-content').innerHTML='<div class="placeholder"><h3>No data for selected months.</h3></div>'; return; }
+
+  const ag1=byAgent(r1), ag2=byAgent(r2);
+  const agents=Object.keys(ag1).filter(a=>AGENT_MAP[a]).sort((a,b)=>ag1[b].rev-ag1[a].rev);
+  const mtdTag=mtd?` <span class="pill neu">MTD ${elapsed}d</span>`:'';
+
+  const cmpRows=agents.map(a=>{
+    const info=AGENT_MAP[a];
+    const v1=ag1[a]?.rev||0, v2=ag2[a]?.rev||0;
+    const chg=v2>0?((v1-v2)/v2*100):null;
+    const max=Math.max(v1,v2,1);
+    return `<tr>
+      <td class="label-cell">${info.name} <span style="font-size:9px;color:var(--muted)">(${info.city})</span></td>
+      <td class="${v1>=v2?'c-up':'c-dn'}">${fmtRev(v1)}</td>
+      <td>${fmtRev(v2)}</td>
+      <td>${chg!==null?`<span class="${chg>=0?'c-up':'c-dn'}">${fmtPct(chg)}</span>`:'—'}</td>
+      <td style="width:120px">
+        <div style="position:relative;height:14px;background:var(--border);border-radius:4px;overflow:hidden">
+          <div style="position:absolute;left:0;top:0;height:100%;width:${v2/max*100}%;background:rgba(234,88,12,0.4);border-radius:4px"></div>
+          <div style="position:absolute;left:0;top:0;height:100%;width:${v1/max*100}%;background:rgba(217,119,6,0.75);border-radius:4px"></div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const tot1=r1.reduce((s,r)=>s+r.rev,0), tot2=r2.reduce((s,r)=>s+r.rev,0);
+
+  document.getElementById('cmp-content').innerHTML=`
+  <div class="sec-head"><span class="sec-title">${fmtMonth(m1)}${mtdTag} vs ${fmtMonth(m2)}</span><div class="sec-line"></div></div>
+  <div class="mg g4" style="margin-bottom:16px">
+    <div class="mc navy"><div class="ml">${fmtMonth(m1)} Total</div><div class="mv sm">${fmtRev(tot1)}</div></div>
+    <div class="mc"><div class="ml">${fmtMonth(m2)} Total</div><div class="mv sm">${fmtRev(tot2)}</div></div>
+    <div class="mc ${tot1>=tot2?'green':'red'}"><div class="ml">Change</div><div class="mv">${fmtPct((tot1-tot2)/tot2*100)}</div></div>
+    <div class="mc gold"><div class="ml">Absolute Δ</div><div class="mv sm">${fmtRev(tot1-tot2)}</div></div>
+  </div>
+  <div class="drr-wrap" style="max-height:500px;overflow-y:auto"><table class="drr-tbl">
+    <thead><tr>
+      <th style="min-width:160px">Agent</th>
+      <th>${fmtMonth(m1)}${mtdTag}</th>
+      <th>${fmtMonth(m2)}</th>
+      <th>Change</th>
+      <th style="min-width:130px">Visual</th>
+    </tr></thead>
+    <tbody>${cmpRows}
+      <tr class="tr-total"><td>TOTAL</td><td>${fmtRev(tot1)}</td><td>${fmtRev(tot2)}</td><td>${fmtPct((tot1-tot2)/tot2*100)}</td><td>—</td></tr>
+    </tbody>
+  </table></div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// DAY OF WEEK
+// ═══════════════════════════════════════════════════════
+function renderDOW(m1,m2,ag,mtd,elapsed){
+  const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const SHORT=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const DCLR=['#7C3AED','#D97706','#059669','#EA580C','#2563EB','#DC2626','#0D9488'];
+
+  function getDoW(rows){
+    const out={};DAYS.forEach(d=>out[d]={rev:0,lic:0,count:0,dates:[]});
+    for(const r of rows){const day=DAYS[parseDateLocal(r.date).getDay()];out[day].rev+=r.rev;out[day].dates.push(r.date);}
+    DAYS.forEach(d=>{const u=[...new Set(out[d].dates)];out[d].count=u.length;out[d].avgRev=u.length>0?out[d].rev/u.length:0;});
+    return out;
+  }
+
+  function getSaleDayStats(rows,dow){
+    const saleDates=[...new Set(rows.filter(r=>DAYS[parseDateLocal(r.date).getDay()]===dow).map(r=>r.date))].sort();
+    const nonSaleDates=[...new Set(rows.filter(r=>DAYS[parseDateLocal(r.date).getDay()]!==dow).map(r=>r.date))].sort();
+    const saleRev=rows.filter(r=>DAYS[parseDateLocal(r.date).getDay()]===dow).reduce((s,r)=>s+r.rev,0);
+    const nonSaleRev=rows.filter(r=>DAYS[parseDateLocal(r.date).getDay()]!==dow).reduce((s,r)=>s+r.rev,0);
+    return {saleDow:dow,saleCount:saleDates.length,saleRev,saleAvg:saleDates.length>0?saleRev/saleDates.length:0,nonSaleCount:nonSaleDates.length,nonSaleRev,nonSaleAvg:nonSaleDates.length>0?nonSaleRev/nonSaleDates.length:0,totalRev:saleRev+nonSaleRev,saleShare:(saleRev+nonSaleRev)>0?saleRev/(saleRev+nonSaleRev)*100:0};
+  }
+
+  function getAllMonthsSaleData(){
+    return getMonths().map(mo=>{
+      const rows=allData.filter(r=>r.month===mo);
+      if(!rows.length) return null;
+      const dowMap={};DAYS.forEach(d=>{dowMap[d]={rev:0,dates:[]};});
+      for(const r of rows){const d=DAYS[parseDateLocal(r.date).getDay()];dowMap[d].rev+=r.rev;dowMap[d].dates.push(r.date);}
+      DAYS.forEach(d=>{const u=[...new Set(dowMap[d].dates)];dowMap[d].count=u.length;dowMap[d].avgRev=u.length>0?dowMap[d].rev/u.length:0;});
+      const saleDay=DAYS.slice().sort((a,b)=>dowMap[b].avgRev-dowMap[a].avgRev)[0];
+      return {month:mo,saleDay,...getSaleDayStats(rows,saleDay)};
+    }).filter(Boolean);
+  }
+
+  const [r1,r2]=getPair(m1,m2,ag);
+  if(!r1.length){document.getElementById('dow-content').innerHTML='<div class="placeholder"><h3>Day of Week Analysis</h3><p>Upload data to begin.</p></div>';return;}
+
+  const dow1=getDoW(r1), dow2=r2?getDoW(r2):null;
+  const tgt=totalTgt(ag), days=daysInMonth(m1), dailyTgt=tgt/days;
+  const sorted=DAYS.slice().sort((a,b)=>dow1[b].avgRev-dow1[a].avgRev);
+  const bestDay=sorted[0], worstDay=sorted[sorted.length-1];
+  const totalRev=r1.reduce((s,r)=>s+r.rev,0);
+  const sd1=getSaleDayStats(r1,bestDay);
+  let sd2=null;
+  if(r2&&dow2){const bd2=DAYS.slice().sort((a,b)=>dow2[b].avgRev-dow2[a].avgRev)[0];sd2=getSaleDayStats(r2,bd2);}
+  const allMoData=getAllMonthsSaleData();
+  const mtdTag=mtd&&m2?` <span class="pill neu">MTD ${elapsed}d</span>`:'';
+  const cmpLabel=m2?` vs ${fmtMonth(m2)}${mtdTag}`:'';
+
+  // Agent DoW breakdown
+  const agentsSorted=Object.keys(byAgent(r1)).filter(a=>AGENT_MAP[a]).sort((a,b)=>byAgent(r1)[b].rev-byAgent(r1)[a].rev);
+  const agDowRows=agentsSorted.map(a=>{
+    const info=AGENT_MAP[a], dTgt=(info.tgt||0)/days;
+    const agRows=r1.filter(r=>r.agent===a);
+    const cells=DAYS.map(d=>{
+      const agDow=agRows.filter(r=>DAYS[parseDateLocal(r.date).getDay()]===d);
+      const dates=[...new Set(agDow.map(r=>r.date))];
+      const avg=dates.length>0?agDow.reduce((s,r)=>s+r.rev,0)/dates.length:0;
+      const pct=dTgt>0?Math.min(avg/dTgt*100,150):0;
+      const clr=pct>=100?'var(--green)':pct>=70?'var(--amber)':'var(--red)';
+      return avg>0?`<td style="color:${clr};font-weight:600${d===bestDay?';background:rgba(217,119,6,0.06)':''}">${fmtRev(avg,0)}</td>`:`<td class="c-na"${d===bestDay?' style="background:rgba(217,119,6,0.06)"':''}>—</td>`;
+    }).join('');
+    return `<tr><td><strong>${info.name}</strong><br><span style="font-size:9px;color:var(--muted)">${info.city}</span></td>${cells}</tr>`;
+  }).join('');
+
+  const totCells=DAYS.map(d=>{const v=dow1[d].avgRev;const pct=dailyTgt>0?v/dailyTgt*100:0;const clr=pct>=100?'var(--green)':pct>=70?'var(--amber)':'var(--red)';return `<td style="color:${clr};font-weight:700${d===bestDay?';background:rgba(217,119,6,0.06)':''}">${fmtRev(v,0)}</td>`;}).join('');
+
+  document.getElementById('dow-content').innerHTML=`
+  <div class="sec-head"><span class="sec-title">Day of Week — ${fmtMonth(m1)}${cmpLabel}</span><div class="sec-line"></div></div>
+  <div class="mg g4" style="margin-bottom:16px">
+    <div class="mc green"><div class="ml">Best Day (Avg)</div><div class="mv sm">${fmtRev(dow1[bestDay].avgRev)}</div><div class="ms">${bestDay} · ${dow1[bestDay].count} occurrences</div></div>
+    <div class="mc red"><div class="ml">Weakest Day (Avg)</div><div class="mv sm">${fmtRev(dow1[worstDay].avgRev)}</div><div class="ms">${worstDay} · ${dow1[worstDay].count} occurrences</div></div>
+    <div class="mc gold"><div class="ml">Daily Target (Avg)</div><div class="mv sm">${fmtRev(dailyTgt)}</div><div class="ms">₹${(tgt/1e5).toFixed(1)}L ÷ ${days} days</div></div>
+    <div class="mc navy"><div class="ml">Best/Worst Ratio</div><div class="mv">${dow1[worstDay].avgRev>0?(dow1[bestDay].avgRev/dow1[worstDay].avgRev).toFixed(1)+'x':'—'}</div><div class="ms">spread across week</div></div>
+  </div>
+  <div class="cg cg2" style="margin-bottom:16px">
+    <div class="cc"><div class="ct">Avg Revenue by Day of Week${m2?` — ${fmtMonth(m1)} vs ${fmtMonth(m2)}`:''}<span class="cb">Avg per occurrence</span></div><div style="height:240px"><canvas id="ch-dow-bar"></canvas></div></div>
+    <div class="cc"><div class="ct">Revenue Distribution by Day<span class="cb">${fmtMonth(m1)}</span></div><div style="height:240px"><canvas id="ch-dow-donut"></canvas></div></div>
+  </div>
+  <div class="cg" style="margin-bottom:16px">
+    <div class="cc"><div class="ct">Daily Revenue Pattern<span class="cb">All ${fmtMonth(m1)} dates</span></div><div style="height:200px"><canvas id="ch-dow-line"></canvas></div></div>
+  </div>
+
+  <div class="sec-head"><span class="sec-title">Sale Day vs Non-Sale Day DRR</span>
+    <span class="sec-sub">Sale day = ${bestDay} (highest avg revenue day)${m2&&sd2?` · ${fmtMonth(m2)} sale day = ${sd2.saleDow}`:''}</span><div class="sec-line"></div></div>
+  <div class="mg g4" style="margin-bottom:16px">
+    <div class="mc green"><div class="ml">🟢 Sale Day DRR — ${fmtMonth(m1)}</div><div class="mv sm">${fmtRev(sd1.saleAvg)}</div><div class="ms">${bestDay} · ${sd1.saleCount} occ · ${sd1.saleShare.toFixed(1)}% of month rev</div></div>
+    <div class="mc navy"><div class="ml">⚪ Non-Sale DRR — ${fmtMonth(m1)}</div><div class="mv sm">${fmtRev(sd1.nonSaleAvg)}</div><div class="ms">${sd1.nonSaleCount} days · ${(100-sd1.saleShare).toFixed(1)}% of month rev</div></div>
+    ${m2&&sd2?`
+    <div class="mc gold"><div class="ml">🟢 Sale Day DRR — ${fmtMonth(m2)}${mtd?' (MTD)':''}</div><div class="mv sm">${fmtRev(sd2.saleAvg)}</div><div class="ms">${sd2.saleDow} · ${sd2.saleCount} occ</div></div>
+    <div class="mc red"><div class="ml">⚪ Non-Sale DRR — ${fmtMonth(m2)}${mtd?' (MTD)':''}</div><div class="mv sm">${fmtRev(sd2.nonSaleAvg)}</div><div class="ms">${sd2.nonSaleCount} days</div></div>`:`
+    <div class="mc teal"><div class="ml">Sale Day Premium</div><div class="mv">${sd1.nonSaleAvg>0?fmtPct((sd1.saleAvg-sd1.nonSaleAvg)/sd1.nonSaleAvg*100):'—'}</div><div class="ms">vs non-sale avg</div></div>
+    <div class="mc"><div class="ml">Sale Day Share</div><div class="mv">${sd1.saleShare.toFixed(1)}%</div><div class="ms">of total ${fmtMonth(m1)} revenue</div></div>`}
+  </div>
+  <div class="cg cg2" style="margin-bottom:16px">
+    <div class="cc"><div class="ct">Sale vs Non-Sale DRR<span class="cb">${fmtMonth(m1)}${m2?` vs ${fmtMonth(m2)}`+( mtd?' MTD':'' ):''}</span></div><div style="height:220px"><canvas id="ch-sale-bar"></canvas></div></div>
+    <div class="cc"><div class="ct">Sale/Non-Sale Trend — All Months<span class="cb">Per-occurrence avg</span></div><div style="height:220px"><canvas id="ch-sale-trend"></canvas></div></div>
+  </div>
+
+  <div class="sec-head"><span class="sec-title">Agent-wise Day of Week Breakdown</span>
+    <span class="sec-sub">Avg revenue per occurrence · 🟡 = sale day column</span><div class="sec-line"></div></div>
+  <div class="drr-wrap"><table class="drr-tbl">
+    <thead><tr><th>Agent</th>${DAYS.map((d,i)=>`<th${d===bestDay?' style="background:rgba(245,158,11,0.25)"':''}}>${SHORT[i]}${d===bestDay?' 🟡':''}</th>`).join('')}</tr></thead>
+    <tbody>${agDowRows}<tr class="tr-total"><td>TOTAL AVG</td>${totCells}</tr></tbody>
+  </table></div>`;
+
+  // Charts
+  const ds1={label:fmtMonth(m1),data:DAYS.map(d=>Math.round(dow1[d].avgRev)),backgroundColor:DAYS.map((_,i)=>DCLR[i]+'CC'),borderColor:DAYS.map((_,i)=>DCLR[i]),borderWidth:1.5,borderRadius:4};
+  const barDs=[ds1];
+  if(dow2) barDs.push({label:fmtMonth(m2)+(mtd?' MTD':''),data:DAYS.map(d=>Math.round(dow2[d].avgRev)),backgroundColor:DAYS.map((_,i)=>DCLR[i]+'55'),borderColor:DAYS.map((_,i)=>DCLR[i]),borderWidth:1.5,borderRadius:4});
+  barDs.push({label:'Daily Tgt',data:DAYS.map(()=>Math.round(dailyTgt)),type:'line',borderColor:'#DC2626',borderDash:[5,3],pointRadius:0,borderWidth:1.5,backgroundColor:'transparent',order:0});
+  mkChart('ch-dow-bar','bar',{labels:SHORT,datasets:barDs},{scales:{x:{grid:{display:false},ticks:{font:{family:'Inter',size:10},color:'#334155'}},y:{grid:{color:'rgba(226,232,240,0.7)'},ticks:{callback:v=>fmtRev(v,0),font:{family:'JetBrains Mono',size:9}}}},plugins:{legend:{display:true,labels:{font:{family:'Inter',size:9},boxWidth:8,padding:8}},tooltip:TOOLTIP_CFG}});
+
+  const donutEl=document.getElementById('ch-dow-donut');
+  if(donutEl){if(CHARTS['ch-dow-donut']){CHARTS['ch-dow-donut'].destroy();delete CHARTS['ch-dow-donut'];}
+    CHARTS['ch-dow-donut']=new Chart(donutEl,{type:'doughnut',data:{labels:DAYS,datasets:[{data:DAYS.map(d=>Math.round(dow1[d].rev)),backgroundColor:DCLR,borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'Inter',size:9},boxWidth:8,padding:5}},tooltip:Object.assign({},TOOLTIP_CFG,{callbacks:{label:c=>`${c.label}: ${fmtRev(c.parsed)} (${totalRev>0?(c.parsed/totalRev*100).toFixed(1):'0'}%)`}}),scales:{}}}});}
+
+  const allDates=[...new Set(r1.map(r=>r.date))].sort();
+  const bd1=byDate(r1);
+  const lineClr=allDates.map(dt=>DCLR[parseDateLocal(dt).getDay()]);
+  const lineEl=document.getElementById('ch-dow-line');
+  if(lineEl){if(CHARTS['ch-dow-line']){CHARTS['ch-dow-line'].destroy();delete CHARTS['ch-dow-line'];}
+    CHARTS['ch-dow-line']=new Chart(lineEl,{type:'bar',
+      data:{labels:allDates.map(dt=>{const d=parseDateLocal(dt);return SHORT[d.getDay()]+' '+dt.slice(8);}),
+        datasets:[{data:allDates.map(dt=>Math.round(bd1[dt]||0)),backgroundColor:lineClr,borderRadius:3,borderWidth:0},{type:'line',label:'Daily Tgt',data:allDates.map(()=>Math.round(dailyTgt)),borderColor:'#DC2626',borderDash:[4,3],pointRadius:0,borderWidth:1.5,backgroundColor:'transparent'}]},
+      options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+        plugins:{legend:{display:true,labels:{font:{family:'Inter',size:9},boxWidth:8,padding:8,filter:i=>i.text==='Daily Tgt'}},tooltip:Object.assign({},TOOLTIP_CFG,{callbacks:{title:items=>{const dt=allDates[items[0].dataIndex];return DAYS[parseDateLocal(dt).getDay()]+' '+dt;},label:c=>c.dataset.type==='line'?` Target: ${fmtRev(c.parsed.y)}`:(` Revenue: ${fmtRev(c.parsed.y)}`)}}),},
+        scales:{x:{grid:{display:false},ticks:{color:'#94A3B8',font:{family:'JetBrains Mono',size:8},maxRotation:45}},y:{grid:{color:'rgba(226,232,240,0.7)'},ticks:{callback:v=>fmtRev(v,0),font:{family:'JetBrains Mono',size:9}}}}}});}
+
+  const saleBarEl=document.getElementById('ch-sale-bar');
+  if(saleBarEl){if(CHARTS['ch-sale-bar']){CHARTS['ch-sale-bar'].destroy();delete CHARTS['ch-sale-bar'];}
+    const saleLabels=m2?[fmtMonth(m1)+' Sale',fmtMonth(m1)+' Non',fmtMonth(m2)+(mtd?' MTD':'')+' Sale',fmtMonth(m2)+(mtd?' MTD':'')+' Non']:['Sale Day','Non-Sale Day'];
+    const saleData=m2&&sd2?[Math.round(sd1.saleAvg),Math.round(sd1.nonSaleAvg),Math.round(sd2.saleAvg),Math.round(sd2.nonSaleAvg)]:[Math.round(sd1.saleAvg),Math.round(sd1.nonSaleAvg)];
+    const saleBg=m2&&sd2?['#059669CC','#64748BCC','#D97706CC','#94A3B8CC']:['#059669CC','#64748BCC'];
+    CHARTS['ch-sale-bar']=new Chart(saleBarEl,{type:'bar',data:{labels:saleLabels,datasets:[{data:saleData,backgroundColor:saleBg,borderRadius:5,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:Object.assign({},TOOLTIP_CFG,{callbacks:{label:c=>' DRR: '+fmtRev(c.parsed.y)}})},scales:{x:{grid:{display:false},ticks:{font:{family:'Inter',size:10},color:'#334155'}},y:{grid:{color:'rgba(226,232,240,0.7)'},ticks:{callback:v=>fmtRev(v,0),font:{family:'JetBrains Mono',size:9}}}}}});}
+
+  const trendEl=document.getElementById('ch-sale-trend');
+  if(trendEl&&allMoData.length>0){if(CHARTS['ch-sale-trend']){CHARTS['ch-sale-trend'].destroy();delete CHARTS['ch-sale-trend'];}
+    CHARTS['ch-sale-trend']=new Chart(trendEl,{type:'line',
+      data:{labels:allMoData.map(d=>fmtMonth(d.month)),datasets:[
+        {label:'Sale Day DRR',data:allMoData.map(d=>Math.round(d.saleAvg)),borderColor:'#059669',backgroundColor:'rgba(5,150,105,0.12)',borderWidth:2,pointRadius:4,pointBackgroundColor:'#059669',tension:0.3,fill:false},
+        {label:'Non-Sale DRR',data:allMoData.map(d=>Math.round(d.nonSaleAvg)),borderColor:'#64748B',backgroundColor:'rgba(100,116,139,0.08)',borderWidth:2,pointRadius:4,pointBackgroundColor:'#64748B',tension:0.3,fill:false,borderDash:[4,3]}]},
+      options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+        plugins:{legend:{display:true,labels:{font:{family:'Inter',size:9},boxWidth:8,padding:8}},tooltip:Object.assign({},TOOLTIP_CFG,{callbacks:{title:items=>{const d=allMoData[items[0].dataIndex];return fmtMonth(d.month)+' · Sale: '+d.saleDow;},label:c=>` ${c.dataset.label}: ${fmtRev(c.parsed.y)}`}})},
+        scales:{x:{grid:{display:false},ticks:{font:{family:'Inter',size:10},color:'#334155',maxRotation:30}},y:{grid:{color:'rgba(226,232,240,0.7)'},ticks:{callback:v=>fmtRev(v,0),font:{family:'JetBrains Mono',size:9}}}}}});}
+}
+
+// ═══════════════════════════════════════════════════════
+// PAGE NAV
+// ═══════════════════════════════════════════════════════
+function showPage(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(btn) btn.classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════
+// GOOGLE SHEETS CONNECTION
+// ═══════════════════════════════════════════════════════
+function showSheetsModal(){
+  var saved=localStorage.getItem(STORAGE_KEY);
+  if(saved) document.getElementById('sheetsUrl').value=saved;
+  var savedInterval=localStorage.getItem(INTERVAL_KEY);
+  if(savedInterval) document.getElementById('refreshInterval').value=savedInterval;
+  document.getElementById('sheetsModal').style.display='flex';
+}
+function closeSheetsModal(){ document.getElementById('sheetsModal').style.display='none'; }
+
+function connectSheets(){
+  var url=document.getElementById('sheetsUrl').value.trim();
+  if(!url||!url.includes('script.google.com')){alert('Please enter a valid Apps Script /exec URL');return;}
+  sheetsUrl=url;
+  localStorage.setItem(STORAGE_KEY,url);
+  localStorage.setItem(INTERVAL_KEY,document.getElementById('refreshInterval').value);
+  closeSheetsModal();
+  loadFromSheets();
+  if(document.getElementById('autoRefresh').checked) startAutoRefresh();
+}
+
+function loadFromSheets(){
+  if(!sheetsUrl) return;
+  document.getElementById('statusTxt').textContent='⟳ Loading from Google Sheets…';
+  // Try fetch with cors, then no-cors redirect trick, then fall back to JSONP
+  fetch(sheetsUrl+'?t='+Date.now(), {redirect:'follow'})
+    .then(function(res){
+      if(res.type==='opaque') throw new Error('opaque');
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      return res.text();
+    })
+    .then(function(text){
+      var json=text.trim();
+      var match=json.match(/^[\w$]+\(([\s\S]+)\)\s*;?$/);
+      if(match) json=match[1].trim();
+      if(!json.startsWith('[')) throw new Error('unexpected format');
+      handleSheetData(JSON.parse(json));
+    })
+    .catch(function(){ 
+      document.getElementById('statusTxt').textContent='⟳ Trying JSONP…';
+      loadFromSheetsJSONP(); 
+    });
+}
+
+function loadFromSheetsJSONP(){
+  var old=document.getElementById('jsonp-loader');
+  if(old) old.parentNode.removeChild(old);
+  var cbName='fptJSONPcb_'+Date.now(), toKey='_fptTO_'+cbName;
+  window[cbName]=function(data){
+    clearTimeout(window[toKey]);delete window[cbName];delete window[toKey];
+    var old2=document.getElementById('jsonp-loader');if(old2) old2.parentNode.removeChild(old2);
+    handleSheetData(data);
+  };
+  window[toKey]=setTimeout(function(){
+    if(window[cbName]){delete window[cbName];delete window[toKey];
+      document.getElementById('statusTxt').textContent='⚠ No response after 10s. Re-deploy Apps Script: New Deployment → Web app → Anyone → Deploy.';}
+  },10000);
+  var script=document.createElement('script');
+  script.id='jsonp-loader';
+  script.src=sheetsUrl+'?callback='+cbName+'&t='+Date.now();
+  script.onerror=function(){delete window[cbName];delete window[toKey];document.getElementById('statusTxt').textContent='⚠ Could not reach Apps Script.';};
+  document.head.appendChild(script);
+}
+
+function handleSheetData(data){
+  if(!Array.isArray(data)||data.length===0){document.getElementById('statusTxt').textContent='⚠ No data received.';return;}
+  var rows=[];
+  for(var i=0;i<data.length;i++){
+    var r=data[i], keys=Object.keys(r);
+    function get(names){for(var n=0;n<names.length;n++){for(var k=0;k<keys.length;k++){if(keys[k].toString().trim().toLowerCase()===names[n]) return r[keys[k]];}}return '';}
+    var month=parseMonthStr((get(['payment_month','f0_','month'])||'').toString().trim());
+    var dateStr=parseDateStr((get(['payment_date','date'])||'').toString().trim());
+    var agent=(get(['agent_email','agent'])||'').toString().trim().toLowerCase();
+    if(!month||!dateStr||!agent) continue;
+    rows.push({month,date:dateStr,agent,
+      ref:(get(['referral_code','ref'])||'').toString().trim(),
+      lic:parseFloat(get(['total_licenses','lic']))||0,
+      dlic:parseFloat(get(['desktop_sold','desktop_licenses','dlic']))||0,
+      rev:parseFloat(get(['rev_ex_gst','rev']))||0});
+  }
+  if(rows.length===0){document.getElementById('statusTxt').textContent='⚠ Data received but no valid rows. Sheet must have: payment_month, payment_date, agent_email, rev_ex_gst';return;}
+  allData=rows;
+  refreshSelects();
+  var months=getMonths(), now=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('fileBadge').style.display='inline';
+  document.getElementById('fileBadge').textContent=allData.length+' rows · '+months.length+' months';
+  document.getElementById('statusTxt').innerHTML='<span style="color:var(--green)">●</span> Live · '+allData.length+' records · '+months.length+' months · refreshed '+now;
+  document.getElementById('dataSource').textContent='Live from Google Sheets · last refreshed '+now;
+  render();
+}
+
+function startAutoRefresh(){if(refreshTimer) clearInterval(refreshTimer);var interval=parseInt(document.getElementById('refreshInterval').value)||300000;refreshTimer=setInterval(loadFromSheets,interval);}
+function stopAutoRefresh(){if(refreshTimer){clearInterval(refreshTimer);refreshTimer=null;}}
+
+(function initSheets(){
+  var saved=localStorage.getItem(STORAGE_KEY);
+  if(saved&&saved.includes('script.google.com')){
+    sheetsUrl=saved;
+    setTimeout(function(){loadFromSheets();var si=localStorage.getItem(INTERVAL_KEY);if(si) document.getElementById('refreshInterval').value=si;startAutoRefresh();},500);
+  }
+})();
+</script>
+</body>
+</html>
